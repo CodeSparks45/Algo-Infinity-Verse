@@ -777,12 +777,16 @@ function appendChatMessage(sender, text, type, color = '') {
     if (!els.chatMessages) return;
     const div = document.createElement('div');
     div.className = `msg ${type}`;
+    
     if (type === 'peer') {
-        div.innerHTML = `<div class="peer-name" style="color:${color}">${sender}</div>${escapeHtml(text)}`;
-    } else if (type === 'system') {
-        div.textContent = text;
+        const nameEl = document.createElement('div');
+        nameEl.className = 'peer-name';
+        nameEl.style.color = color;
+        nameEl.textContent = sender; // Use textContent for safety
+        div.appendChild(nameEl);
+        div.appendChild(document.createTextNode(text)); // Plain text
     } else {
-        div.textContent = text;
+        div.textContent = text; // Plain text
     }
     els.chatMessages.appendChild(div);
     els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
