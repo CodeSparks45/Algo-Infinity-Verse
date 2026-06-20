@@ -9,6 +9,7 @@ import { extractResumeText } from "./backend/resume-analyzer/parser.js";
 import { calculateATS } from "./backend/resume-analyzer/atsScore.js";
 import { findMissingSkills } from "./backend/resume-analyzer/skills.js";
 import { getSuggestions } from "./backend/resume-analyzer/suggestions.js";
+import { Server as SocketIOServer } from "socket.io";
 
 const upload = multer({ storage: multer.memoryStorage() }).single("resume");
 
@@ -1329,11 +1330,93 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// --- PHASE 1 ADDITION: SOCKET.IO LOGIC ---
+const io = new SocketIOServer(server);
+
+io.on("connection", (socket) => {
+console.log("🟢 New client connected:", socket.id);
+
+  /**
+ * server.js additions for Issue #549
+ * ─────────────────────────────────────────────────────────────
+ * Add these socket.io event handlers inside your io.on('connection', ...) block
+ * in your existing server.js. Do NOT replace the whole server.js —
+ * just paste this block after your existing join-room / user-connected events.
+ */
+
+// ── PASTE INSIDE: io.on('connection', (socket) => { ... }) ──
+
+// Draw events (whiteboard)
+socket.on('draw', (data) => {
+    // Broadcast to everyone else in the room
+    socket.to(data.roomId).emit('receive-draw', data);
+});
+
+// Clear board
+socket.on('clear-board', ({ roomId }) => {
+    socket.to(roomId).emit('receive-clear');
+});
+
+// Shared notes
+socket.on('share-notes', ({ roomId, text }) => {
+    socket.to(roomId).emit('receive-notes', text);
+});
+
+// Chat messages
+socket.on('chat-message', (data) => {
+    socket.to(data.roomId).emit('chat-message', data);
+});
+
+// ── VOICE CHAT (WebRTC signaling) ──
+
+socket.on('voice-join', ({ roomId, userId }) => {
+    socket.to(roomId).emit('voice-user-joined', { userId });
+});
+
+socket.on('voice-leave', ({ roomId, userId }) => {
+    socket.to(roomId).emit('voice-user-left', { userId });
+});
+
+// WebRTC offer
+socket.on('voice-offer', ({ roomId, offer, to, from }) => {
+    // Send offer only to the target peer
+    socket.to(roomId).emit('voice-offer', { offer, from });
+});
+
+// WebRTC answer
+socket.on('voice-answer', ({ roomId, answer, to, from }) => {
+    socket.to(roomId).emit('voice-answer', { answer, from });
+});
+
+// ICE candidates
+socket.on('voice-ice', ({ roomId, candidate, to, from }) => {
+    socket.to(roomId).emit('voice-ice', { candidate, from });
+});
+
+// ── END OF ADDITIONS ──
+
+
+  socket.on("join-room", (roomId, userId) => {
+      socket.join(roomId);
+     console.log(`👥 User ${userId} joined Room ${roomId}`);
+      
+      socket.to(roomId).emit("user-connected", userId);
+
+      socket.on("disconnect", () => {
+          console.log("🔴 Client disconnected:", socket.id);
+          socket.to(roomId).emit("user-disconnected", userId);
+      });
+  });
+});
+// -----------------------------------------
+
 export { server };
 if (process.env.VERCEL === "1") {
   db = initializeFirebase();
   useFirestore = !!db;
 }
+
+
 
 if (process.env.VERCEL !== "1") {
   loadEnvFile()
