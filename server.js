@@ -392,6 +392,13 @@ async function handleApi(req, res, pathname) {
   
   if (pathname === "/api/execute" && req.method === "POST") {
     try {
+      const session = getSession(req);
+      if (!session) {
+        return sendJson(res, 401, {
+          success: false,
+          message: "Authentication required.",
+        });
+      }
      
       const payload = await readJsonBody(req);
       const { sourceCode, language, stdin } = payload;
