@@ -401,7 +401,8 @@ async function handleApi(req, res, pathname) {
       }
      
       const payload = await readJsonBody(req);
-      const { sourceCode, language, stdin } = payload;
+      const sourceCode = payload.sourceCode ?? payload.source_code;
+      const { language, stdin } = payload;
 
       if (!sourceCode || !language) {
         return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
