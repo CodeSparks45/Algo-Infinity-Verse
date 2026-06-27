@@ -798,11 +798,23 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { success: true }, { "Set-Cookie": authCookies(accessToken, refreshToken, req) });
   }
 
- if (pathname === "/api/session" && req.method === "GET") {
- 
+if (pathname === "/api/session" && req.method === "GET") {
+    const session = getSession(req);
+    
+    // Agar user logged in nahi hai
+    if (!session) {
+      return sendJson(res, 200, { authenticated: false, user: null });
+    }
+    
+    // Agar user logged in hai, toh asli details bhejo (No more Pavan)
     return sendJson(res, 200, {
       authenticated: true,
-      user: { id: "dev-123", name: "Pavan (Dev Mode)", sub: "dev-123", email: "dev@algo.com" },
+      user: {
+        id: session.sub,
+        name: session.name,
+        sub: session.sub,
+        email: session.email,
+      },
     });
   }
 
@@ -2008,6 +2020,24 @@ const io = new SocketIOServer(server);
 io.on("connection", (socket) => {
 console.log("🟢 New client connected:", socket.id);
 
+
+
+
+// ============================================
+// AGENTIC AI INTERVIEW COMPANION (ISSUE #578)
+// ============================================
+socket.on('ai-evaluate-code', (data) => {
+    console.log(`🤖 AI Interviewer analyzing code for user: ${data.userId}`);
+    
+    // Yahan hum baad mein Gemini API call karenge.
+    // Abhi ke liye, hum ek simulated AI hint bhej rahe hain.
+    const mockHint = `AI Tip: For the '${data.problem}' problem, check your edge cases! ` +
+                     `Your current ${data.language} implementation looks promising, ` +
+                     `but ensure your time complexity is optimized for larger inputs.`;
+
+    // AI feedback bhej rahe hain
+    socket.emit('ai-interviewer-feedback', { hint: mockHint });
+});
  
 
 // Draw events (whiteboard)
