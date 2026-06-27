@@ -563,10 +563,13 @@ let workspaceSocket = null;
 }());
 
 // 2. The Main Init Function
+// ============================================
+// AGENTIC AI INTERVIEW COMPANION LOGIC
+// ============================================
 function initAiInterviewer() {
     const editor = document.getElementById('codeEditor');
     
- if (!workspaceSocket && typeof io !== 'undefined') {
+    if (!workspaceSocket && typeof io !== 'undefined') {
         workspaceSocket = io();
     }
 
@@ -581,13 +584,11 @@ function initAiInterviewer() {
         const lang = document.getElementById('languageSelect')?.value || 'javascript';
         const problemTitle = currentProblem ? currentProblem.title : "Free Workspace";
 
+        // Bot Fix: Removed userId completely to avoid PII leak
         workspaceSocket.emit('ai-evaluate-code', {
             code: code,
             language: lang,
-            problem: problemTitle,
-           userId: typeof userProgress !== 'undefined' && userProgress.name && userProgress.name !== "Pavan (Dev Mode)" 
-        ? userProgress.name 
-        : (document.getElementById('profileName')?.textContent || "Candidate")
+            problem: problemTitle
         });
         console.log("🕵️‍♂️ Sent live code to AI Interviewer for analysis...");
     }, 2500);
@@ -630,7 +631,7 @@ function initAiInterviewer() {
             </div>
         `;
 
-       bubble.querySelector('.ai-hint-body').appendChild(hintSpan);
+        bubble.querySelector('.ai-hint-body').appendChild(hintSpan);
 
         // Inject inside modal, not body — fixes the "outside editor" bug
         const target = document.querySelector('.quiz-modal-content') 
@@ -660,6 +661,13 @@ function initAiInterviewer() {
 
 function toggleAiInterviewer() {
     isAiInterviewerActive = !isAiInterviewerActive;
+    
+    // Bot Fix: Sync Accessibility (aria-pressed) for screen readers
+    const toggleBtn = document.getElementById('aiInterviewerToggle');
+    if (toggleBtn) {
+        toggleBtn.setAttribute('aria-pressed', isAiInterviewerActive.toString());
+    }
+
     if (isAiInterviewerActive) {
         // Re-init if socket not ready yet
         if (!workspaceSocket && typeof io !== 'undefined') {
@@ -667,17 +675,7 @@ function toggleAiInterviewer() {
             initAiInterviewer();
         }
         showNotification("🤖 Agentic AI Interviewer is now observing your code.", "success");
-        
-        // Force trigger feedback immediately for testing
-        if (workspaceSocket) {
-            workspaceSocket.emit('ai-evaluate-code', {
-                code: document.getElementById('codeEditor')?.value || '',
-                language: document.getElementById('languageSelect')?.value || 'javascript',
-                problem: 'Test',
-                userId: 'test'
-            });
-        }
-
+        // Bot Fix: Removed the forced 'Test' emit completely. The real debounce will handle it now.
     } else {
         showNotification("🤖 Agentic AI Interviewer deactivated.", "info");
         // Also remove bubble if user turns off AI
