@@ -806,11 +806,19 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { success: true }, { "Set-Cookie": authCookies(accessToken, refreshToken, req) });
   }
 
- if (pathname === "/api/session" && req.method === "GET") {
- 
+if (pathname === "/api/session" && req.method === "GET") {
+    const session = getSession(req);
+    if (!session) {
+      return sendJson(res, 200, { authenticated: false, user: null });
+    }
     return sendJson(res, 200, {
       authenticated: true,
-      user: { id: "dev-123", name: "Pavan (Dev Mode)", sub: "dev-123", email: "dev@algo.com" },
+      user: {
+        id: session.sub,
+        name: session.name,
+        sub: session.sub,
+        email: session.email,
+      },
     });
   }
 
