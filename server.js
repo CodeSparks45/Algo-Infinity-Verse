@@ -27,6 +27,15 @@ import {
   createRefreshToken, verifyRefreshToken, revokeTokenFamily,
   activeRefreshFamilies
 } from "./backend/services/auth.service.js";
+import {
+  applyRateLimit,
+  loginLimiter,
+  signupLimiter,
+  forgotPasswordLimiter,
+  changePasswordLimiter,
+  deleteAccountLimiter,
+  resendVerificationLimiter
+} from "./backend/utils/rateLimiter.js";
 import { applySM2 } from "./backend/services/memory.service.js";
 import { sendVerificationEmail } from "./backend/services/email.service.js";
 import {
@@ -241,14 +250,20 @@ async function writeMemoryStoreAtomic(filePath, store) {
 
 // Serializes read-modify-write cycles so concurrent /api/memory/* requests
 // cannot clobber each other's updates. `mutator` receives the current store
-// and must return the updated store.
+// and must return the updated store (or modify it in-place).
 async function updateMemoryStore(mutator) {
   const task = memoryWriteQueue.then(async () => {
     await ensureMemoryStore();
     const raw = await fs.readFile(MEMORY_FILE, "utf8");
     const store = JSON.parse(raw || "{}");
     const updated = await mutator(store);
-    await writeMemoryStoreAtomic(MEMORY_FILE, store);
+    // Write the updated store if the mutator returned a new store object.
+    // If the mutator mutated in-place and returned undefined or a sub-resource
+    // (such as a card object), we write the mutated store.
+    const isCard = updated && typeof updated === "object" && ("topic" in updated || "nextReviewDate" in updated || "repetitions" in updated);
+    const isNewStore = updated && typeof updated === "object" && !isCard;
+    const storeToSave = isNewStore && updated !== store ? updated : store;
+    await writeMemoryStoreAtomic(MEMORY_FILE, storeToSave);
     return updated;
   });
 
@@ -397,6 +412,35 @@ async function handleApi(req, res, pathname) {
      
       const payload = await readJsonBody(req);
       const { sourceCode, language, stdin } = payload;
+      const session = getSession(req);
+      if (!session) {
+        return sendJson(res, 401, {
+          success: false,
+          message: "Authentication required.",
+        });
+      }
+     
+      let payload;
+      try {
+        payload = await readJsonBody(req);
+      } catch (err) {
+        const tooLarge = err?.message === "Request body is too large.";
+        return sendJson(res, tooLarge ? 413 : 400, {
+          success: false,
+          message: tooLarge ? "Request body is too large." : "Invalid JSON body.",
+        });
+      }
+      const sourceCode = payload.sourceCode ?? payload.source_code;
+      const { language, stdin } = payload;
+
+      if (
+        typeof sourceCode !== "string" ||
+        !sourceCode.trim() ||
+        typeof language !== "string" ||
+        !language.trim()
+      ) {
+        return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
+      }
 
       if (!sourceCode || !language) {
         return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
@@ -712,21 +756,22 @@ async function handleApi(req, res, pathname) {
     } catch (err) {
       console.error("Repository analysis error:", err.message);
       return sendJson(res, 500, { error: "Failed to analyze repository. " + err.message });
-// SDLC Advisor API
-if (pathname === "/api/sdlc-advisor" && req.method === "POST") {
-  try {
-    const payload = await readJsonBody(req);
-    const { description } = payload;
-    if (!description) {
-      return sendJson(res, 400, { error: "Project description is required." });
     }
-    const advice = await generateSdlcAdvice(description);
-    return sendJson(res, 200, advice);
-  } catch (e) {
-    console.error("SDLC Advisor error:", e);
-    return sendJson(res, 500, { error: "Failed to generate SDLC advice." });
   }
-}
+
+  // SDLC Advisor API
+  if (pathname === "/api/sdlc-advisor" && req.method === "POST") {
+    try {
+      const payload = await readJsonBody(req);
+      const { description } = payload;
+      if (!description) {
+        return sendJson(res, 400, { error: "Project description is required." });
+      }
+      const advice = await generateSdlcAdvice(description);
+      return sendJson(res, 200, advice);
+    } catch (e) {
+      console.error("SDLC Advisor error:", e);
+      return sendJson(res, 500, { error: "Failed to generate SDLC advice." });
     }
   }
 
@@ -824,6 +869,9 @@ if (pathname === "/api/session" && req.method === "GET") {
     }
     
     // Agar user logged in hai, toh asli details bhejo (No more Pavan)
+    if (!session) {
+      return sendJson(res, 200, { authenticated: false, user: null });
+    }
     return sendJson(res, 200, {
       authenticated: true,
       user: {
@@ -836,12 +884,9 @@ if (pathname === "/api/session" && req.method === "GET") {
   }
 
   if (pathname === "/api/signup" && req.method === "POST") {
-    const clientId = getClientIdentifier(req);
-    if (isSignupRateLimited(clientId)) {
-      await normalizeAuthDelay();
-      return sendJson(res, 429, { error: "Too many signup attempts. Please try again later." });
+    if (!applyRateLimit(req, res, signupLimiter, "Too many signup attempts. Please try again later.")) {
+      return;
     }
-    recordSignupAttempt(clientId);
 
     const payload = await readJsonBody(req);
     const validationError = validateSignup(payload);
@@ -886,6 +931,9 @@ if (pathname === "/api/session" && req.method === "GET") {
   }
 
   if (pathname === "/api/login" && req.method === "POST") {
+    if (!applyRateLimit(req, res, loginLimiter, "Too many login attempts. Please try again later.")) {
+      return;
+    }
     const payload = await readJsonBody(req);
     const email = String(payload.email || "").trim().toLowerCase();
     const password = String(payload.password || "");
@@ -911,6 +959,7 @@ if (pathname === "/api/session" && req.method === "GET") {
     }
 
     const token = createAccessToken(user);
+    loginLimiter.reset(getClientIdentifier(req));
     return sendJson(
       res, 200,
       { user: { id: user.id, name: user.name, email: user.email } },
@@ -1028,19 +1077,22 @@ if (pathname === "/api/session" && req.method === "GET") {
   }
 
   if (pathname === "/api/change-password" && req.method === "POST") {
-  const session = getSession(req);
+    if (!applyRateLimit(req, res, changePasswordLimiter, "Too many change password attempts. Please try again later.")) {
+      return;
+    }
+    const session = getSession(req);
 
-  if (!session) {
-    return sendJson(res, 401, {
-      error: "Login required.",
-    });
-  }
+    if (!session) {
+      return sendJson(res, 401, {
+        error: "Login required.",
+      });
+    }
 
-  const {
-    currentPassword,
-    newPassword,
-    confirmPassword,
-  } = await readJsonBody(req);
+    const {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    } = await readJsonBody(req);
 
   if (
     !currentPassword ||
@@ -1103,6 +1155,8 @@ if (pathname === "/api/session" && req.method === "GET") {
 
   await writeUsers(users);
 
+  changePasswordLimiter.reset(getClientIdentifier(req));
+
   return sendJson(
     res,
     200,
@@ -1155,6 +1209,9 @@ if (
   pathname === "/api/delete-account" &&
   req.method === "POST"
 ) {
+  if (!applyRateLimit(req, res, deleteAccountLimiter, "Too many delete account attempts. Please try again later.")) {
+    return;
+  }
   const session = getSession(req);
 
   if (!session) {
@@ -1237,6 +1294,9 @@ if (
   );
 }
 if (pathname === "/api/forgot-password" && req.method === "POST") {
+    if (!applyRateLimit(req, res, forgotPasswordLimiter, "Too many forgot password attempts. Please try again later.")) {
+      return;
+    }
     let payload;
     try {
       payload = await readJsonBody(req);
@@ -1286,147 +1346,7 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
     );
   }
 
-  if (pathname === "/api/feedback" && req.method === "POST") {
-    const session = getSession(req);
-    let payload;
-    try {
-      payload = await readJsonBody(req);
-    } catch (err) {
-      return sendJson(res, 400, { error: "Invalid JSON body." });
-    }
 
-    const { feedbackType, subject, message } = payload;
-    if (!feedbackType || !subject || !message) {
-      return sendJson(res, 400, {
-        error: "Feedback type, subject, and message are required.",
-      });
-    }
-
-    const allowedTypes = [
-      "Suggestion",
-      "Bug Report",
-      "Feature Request",
-      "General Feedback",
-    ];
-    if (!allowedTypes.includes(feedbackType)) {
-      return sendJson(res, 400, { error: "Invalid feedback type." });
-    }
-
-    if (subject.trim().length < 3) {
-      return sendJson(res, 400, {
-        error: "Subject must be at least 3 characters long.",
-      });
-    }
-
-    if (message.trim().length < 10) {
-      return sendJson(res, 400, {
-        error: "Message must be at least 10 characters long.",
-      });
-    }
-
-    const feedbackData = {
-      userId: session ? session.sub : null,
-      userName: session ? session.name : null,
-      userEmail: session ? session.email : null,
-      feedbackType,
-      subject: subject.trim(),
-      message: message.trim(),
-      status: "new",
-      createdAt: new Date().toISOString(),
-    };
-
-    try {
-      if (useFirestore) {
-        const docRef = await db.collection("feedback").add(feedbackData);
-        feedbackData.id = docRef.id;
-      } else {
-        const feedbackFile = path.join(DATA_DIR, "feedback.json");
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        let feedbackList = [];
-        try {
-          const raw = await fs.readFile(feedbackFile, "utf8");
-          feedbackList = JSON.parse(raw || "[]");
-        } catch (err) {
-          if (err.code !== "ENOENT") throw err;
-        }
-        feedbackData.id = crypto.randomUUID();
-        feedbackList.push(feedbackData);
-        await fs.writeFile(
-          feedbackFile,
-          JSON.stringify(feedbackList, null, 2) + "\n",
-        );
-      }
-
-      if (pathname === "/api/feedback" && req.method === "POST") {
-    const session = getSession(req);
-    let payload;
-    try {
-      payload = await readJsonBody(req);
-    } catch (err) {
-      return sendJson(res, 400, { error: "Invalid JSON body." });
-    }
-
-    const { feedbackType, subject, message } = payload;
-    if (!feedbackType || !subject || !message) {
-      return sendJson(res, 400, {
-        error: "Feedback type, subject, and message are required.",
-      });
-    }
-
-    const allowedTypes = [
-      "Suggestion",
-      "Bug Report",
-      "Feature Request",
-      "General Feedback",
-    ];
-    if (!allowedTypes.includes(feedbackType)) {
-      return sendJson(res, 400, { error: "Invalid feedback type." });
-    }
-
-    if (subject.trim().length < 3) {
-      return sendJson(res, 400, {
-        error: "Subject must be at least 3 characters long.",
-      });
-    }
-
-    if (message.trim().length < 10) {
-      return sendJson(res, 400, {
-        error: "Message must be at least 10 characters long.",
-      });
-    }
-
-    const feedbackData = {
-      userId: session ? session.sub : null,
-      userName: session ? session.name : null,
-      userEmail: session ? session.email : null,
-      feedbackType,
-      subject: subject.trim(),
-      message: message.trim(),
-      status: "new",
-      createdAt: new Date().toISOString(),
-    };
-
-    try {
-      if (useFirestore) {
-        const docRef = await db.collection("feedback").add(feedbackData);
-        feedbackData.id = docRef.id;
-      } else {
-        const feedbackFile = path.join(DATA_DIR, "feedback.json");
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        let feedbackList = [];
-        try {
-          const raw = await fs.readFile(feedbackFile, "utf8");
-          feedbackList = JSON.parse(raw || "[]");
-        } catch (err) {
-          if (err.code !== "ENOENT") throw err;
-        }
-        feedbackData.id = crypto.randomUUID();
-        feedbackList.push(feedbackData);
-        await fs.writeFile(
-          feedbackFile,
-          JSON.stringify(feedbackList, null, 2) + "\n",
-        );
-      }
 
       return sendJson(res, 201, { success: true, feedback: feedbackData });
     } catch (err) {
@@ -1988,6 +1908,9 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
   }
 
   if (pathname === "/api/resend-verification" && req.method === "POST") {
+    if (!applyRateLimit(req, res, resendVerificationLimiter, "Too many verification requests. Please try again later.")) {
+      return;
+    }
     const body = await readJsonBody(req);
     const email = String(body.email || "").trim().toLowerCase();
     if (!email) return sendJson(res, 400, { error: "Email required." });
@@ -2277,7 +2200,7 @@ socket.on('voice-ice', ({ roomId, candidate, to, from }) => {
 });
 // -----------------------------------------
 
-export { server, hashPassword, passwordMatches, applySM2, validateSignup };
+export { server, hashPassword, passwordMatches, applySM2, validateSignup, updateMemoryStore, readMemoryStore };
 if (process.env.VERCEL === "1") {
   db = initializeFirebase();
   useFirestore = !!db;
@@ -2304,6 +2227,16 @@ if (process.env.VERCEL !== "1" && process.env.NODE_ENV !== "test") {
           console.warn(
             "Using a development SESSION_SECRET. Set SESSION_SECRET before deploying.",
           );
+        }
+      });
+
+      server.on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          console.error(`\n❌ Port ${port} is already in use.`);
+          console.error(`   Stop the existing server first, then run: npm run dev\n`);
+          process.exit(1);
+        } else {
+          throw err;
         }
       });
     })
