@@ -2872,7 +2872,14 @@ async function runQuizCode() {
     if (result.metrics && result.metrics.cpuTime) {
       const metricText = `\n\n⏱️ Execution Time: ${result.metrics.cpuTime} sec\n💾 Memory Used: ${result.metrics.memory} KB`;
       const el = document.getElementById("quizOutputContent");
-      if (el) el.innerHTML += `<pre style="color:var(--accent); margin-top:10px;">${metricText}</pre>`;
+      if (el) {
+        const metricsEl = document.createElement("pre");
+        metricsEl.style.color = "var(--accent)";
+        metricsEl.style.marginTop = "10px";
+        metricsEl.setAttribute("aria-label", "Execution metrics");
+        metricsEl.textContent = metricText;
+        el.appendChild(metricsEl);
+      }
     }
   } catch (e) {
     renderTestCases(testCases);
