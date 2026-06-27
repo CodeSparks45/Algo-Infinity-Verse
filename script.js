@@ -307,11 +307,11 @@ const practiceProblems = [
   { id: 4, title: "Maximum Subarray", difficulty: "medium", tags: ["Arrays", "Divide & Conquer"], acceptance: "46.2%", category: "arrays", description: "Given an integer array nums, find the contiguous subarray (containing at least one number) which has the largest sum.", constraints: ["1 ≤ nums.length ≤ 10⁵", "-10⁴ ≤ nums[i] ≤ 10⁴"], followUp: "Can you solve it in O(n) time using Kadane's Algorithm?", functionName: "maxSubArray", testCases: [{ input: [[-2,1,-3,4,-1,2,1,-5,4]], expected: 6 }, { input: [[1]], expected: 1 }, { input: [[5,4,-1,7,8]], expected: 23 }, { input: [[-1]], expected: -1 }] },
   { id: 5, title: "LRU Cache", difficulty: "medium", tags: ["Design", "Hash Table"], acceptance: "37.5%", category: "arrays", description: "Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.", constraints: ["1 ≤ capacity ≤ 3000", "0 ≤ key, value ≤ 10⁴", "At most 2 × 10⁵ calls"], followUp: "Can you implement both get and put in O(1) time complexity?" },
   { id: 6, title: "Clone Graph", difficulty: "medium", tags: ["Graphs", "DFS", "BFS"], acceptance: "43.2%", category: "graphs", description: "Given an adjacency list representing a connected undirected graph, return a deep copy (clone) of the graph as an adjacency list.", constraints: ["0 ≤ adjList.length ≤ 100", "1 ≤ adjList[i][j] ≤ 100", "Each node's value is 1-indexed (node i+1 corresponds to adjList[i])"], followUp: "Can you solve it using both BFS and DFS approaches?", functionName: "cloneGraph", params: ["adjList"], guide: "adjList: 2D array where adjList[i] lists the neighbors of node i+1 (1-indexed)\nreturns: a deep copy of the adjacency list representing the cloned graph", testCases: [ { input: [[[2,4],[1,3],[2,4],[1,3]]], expected: [[2,4],[1,3],[2,4],[1,3]] }, { input: [[[]]], expected: [[]] }, { input: [[]], expected: [] } ] },
-  { id: 7, title: "Longest Increasing Subsequence", difficulty: "hard", tags: ["DP", "Binary Search"], acceptance: "42.1%", category: "dp", description: "Given an integer array nums, return the length of the longest strictly increasing subsequence.", constraints: ["1 ≤ nums.length ≤ 2500", "-10⁴ ≤ nums[i] ≤ 10⁴"], followUp: "Can you improve from O(n²) DP to O(n log n) using binary search?", functionName: "lengthOfLIS", testCases: [{ input: [[10,9,2,5,3,7,101,18]], expected: 4 }, { input: [[0,1,0,3,2,3]], expected: 4 }, { input: [[7,7,7,7,7,7,7]], expected: 1 }] },
+  { id: 7, title: "Longest Increasing Subsequence", difficulty: "hard", tags: ["DP", "Binary Search"], acceptance: "42.1%", category: "dp", description: "Given an integer array nums, return the length of the longest strictly increasing subsequence.", constraints: ["1 ≤ nums.length ≤ 2500", "-10⁴ ≤ nums[i] ≤ 10⁴"], followUp: "Can you improve from O(n²) DP to O(n log n) using binary search?", functionName: "lengthOfLIS", params: ["nums"], guide: "nums: array of integers\nreturns: length of the longest strictly increasing subsequence", testCases: [{ input: [[10,9,2,5,3,7,101,18]], expected: 4 }, { input: [[0,1,0,3,2,3]], expected: 4 }, { input: [[7,7,7,7,7,7,7]], expected: 1 }] },
   { id: 8, title: "Word Ladder", difficulty: "hard", tags: ["Graphs", "BFS"], acceptance: "31.4%", category: "graphs", description: "Given two words, beginWord and endWord, and a dictionary wordList, return the number of words in the shortest transformation sequence.", constraints: ["1 ≤ beginWord.length ≤ 10", "endWord.length == beginWord.length", "1 ≤ wordList.length ≤ 5000"], followUp: "Can you find ALL shortest transformation sequences?" },
-  { id: 9, title: "Trapping Rain Water", difficulty: "hard", tags: ["Arrays", "Two Pointers"], acceptance: "48.7%", category: "arrays", description: "Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.", constraints: ["1 ≤ height.length ≤ 2 × 10⁴", "0 ≤ height[i] ≤ 10⁵"], followUp: "Can you solve it in O(n) time and O(1) space using the two-pointer technique?", functionName: "trap", testCases: [{ input: [[0,1,0,2,1,0,1,3,2,1,2,1]], expected: 6 }, { input: [[4,2,0,3,2,5]], expected: 9 }] },
-  { id: 10, title: "Reverse Linked List", difficulty: "easy", tags: ["Linked List"], acceptance: "72.1%", category: "linkedlist", description: "Given an array representing a linked list, reverse it and return the reversed array.", constraints: ["0 ≤ arr.length ≤ 5000", "-5000 ≤ arr[i] ≤ 5000"], followUp: "Can you solve it both iteratively and recursively?", functionName: "reverseList", testCases: [{ input: [[1,2,3,4,5]], expected: [5,4,3,2,1] }, { input: [[1,2]], expected: [2,1] }, { input: [[]], expected: [] }] },
-  { id: 11, title: "Invert Binary Tree", difficulty: "easy", tags: ["Trees", "DFS"], acceptance: "68.5%", category: "trees", description: "Given a binary tree represented as a level-order array, invert it and return the inverted level-order array.", constraints: ["0 ≤ arr.length ≤ 100", "-100 ≤ arr[i] ≤ 100"], followUp: "Can you solve it both recursively and iteratively using a queue or stack?", functionName: "invertTree", testCases: [{ input: [[4,2,7,1,3,6,9]], expected: [4,7,2,9,6,3,1] }, { input: [[2,1,3]], expected: [2,3,1] }, { input: [[]], expected: [] }] },
+  { id: 9, title: "Trapping Rain Water", difficulty: "hard", tags: ["Arrays", "Two Pointers"], acceptance: "48.7%", category: "arrays", description: "Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.", constraints: ["1 ≤ height.length ≤ 2 × 10⁴", "0 ≤ height[i] ≤ 10⁵"], followUp: "Can you solve it in O(n) time and O(1) space using the two-pointer technique?", functionName: "trap", params: ["height"], guide: "height: array of non-negative integers representing bar heights in the elevation map\nreturns: total units of rainwater that can be trapped between the bars\n\nHint: Use two pointers (left at 0, right at end). Track maxLeft and maxRight. At each step, process the shorter side: if height[left] < height[right], water += max(0, maxLeft - height[left]), else water += max(0, maxRight - height[right]).", testCases: [{ input: [[0,1,0,2,1,0,1,3,2,1,2,1]], expected: 6 }, { input: [[4,2,0,3,2,5]], expected: 9 }] },
+  { id: 10, title: "Reverse Linked List", difficulty: "easy", tags: ["Linked List"], acceptance: "72.1%", category: "linkedlist", description: "Given an array representing a linked list, reverse it and return the reversed array.", constraints: ["0 ≤ arr.length ≤ 5000", "-5000 ≤ arr[i] ≤ 5000"], followUp: "Can you solve it both iteratively and recursively?", functionName: "reverseList", params: ["head"], guide: "head: array of integers representing the linked list values\nreturns: reversed array with elements in opposite order\n\nHint: Use two pointers (prev starts empty, curr starts at head). Iterate through, reversing each element's position.", testCases: [{ input: [[1,2,3,4,5]], expected: [5,4,3,2,1] }, { input: [[1,2]], expected: [2,1] }, { input: [[]], expected: [] }] },
+  { id: 11, title: "Invert Binary Tree", difficulty: "easy", tags: ["Trees", "DFS"], acceptance: "68.5%", category: "trees", description: "Given a binary tree represented as a level-order array, invert it and return the inverted level-order array.", constraints: ["0 ≤ arr.length ≤ 100", "-100 ≤ arr[i] ≤ 100"], followUp: "Can you solve it both recursively and iteratively using a queue or stack?", functionName: "invertTree", params: ["root"], guide: "root: level-order array of integers representing the binary tree (null for missing nodes)\nreturns: level-order array of the inverted binary tree (swapped left/right children)\n\nHint: Recursively swap left and right children at each node. Base case: when root is null or empty.", testCases: [{ input: [[4,2,7,1,3,6,9]], expected: [4,7,2,9,6,3,1] }, { input: [[2,1,3]], expected: [2,3,1] }, { input: [[]], expected: [] }] },
   { id: 12, title: "Validate BST", difficulty: "medium", tags: ["Trees", "Recursion"], acceptance: "28.4%", category: "trees", description: "Given a binary tree represented as a level-order array (null for missing children), determine if it is a valid BST.", constraints: ["1 ≤ arr.length ≤ 10⁴", "-2³¹ ≤ arr[i] ≤ 2³¹ - 1"], followUp: "Can you solve it without recursion?", functionName: "isValidBST", testCases: [{ input: [[2,1,3]], expected: true }, { input: [[5,1,4,null,null,3,6]], expected: false }] },
   { id: 13, title: "Number of Islands", difficulty: "medium", tags: ["Graphs", "DFS"], acceptance: "54.8%", category: "graphs", description: "Given an m x n 2D binary grid which represents a map of '1's (land) and '0's (water), return the number of islands.", constraints: ["1 ≤ m, n ≤ 300", "grid[i][j] is '0' or '1'"], followUp: "Can you solve it using both DFS and Union-Find?", functionName: "numIslands", testCases: [{ input: [[["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]], expected: 1 }, { input: [[["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]]], expected: 3 }, { input: [[["0"]]], expected: 0 }] },
   { id: 14, title: "House Robber", difficulty: "medium", tags: ["DP", "Arrays"], acceptance: "42.3%", category: "dp", description: "You are a professional robber planning to rob houses along a street. Return the maximum amount of money you can rob without robbing two adjacent houses.", constraints: ["1 ≤ nums.length ≤ 100", "0 ≤ nums[i] ≤ 400"], followUp: "What if the houses are arranged in a circle?", functionName: "rob", testCases: [{ input: [[1,2,3,1]], expected: 4 }, { input: [[2,7,9,3,1]], expected: 12 }, { input: [[2,1,1,2]], expected: 4 }] },
@@ -2535,7 +2535,7 @@ function getDefaultCode(lang, problem) {
 }
 
 function generateExamples(problem) {
-  const examples = { 1: `<strong>Example 1:</strong><br>Input: nums = [2,7,11,15], target = 9<br>Output: [0,1]<br><br><strong>Follow-up:</strong> Can you solve it in O(n) using a Hash Map?`, 2: `<strong>Example 1:</strong><br>Input: s = "()"<br>Output: true<br><br><strong>Follow-up:</strong> Can you solve it in O(n) using a Stack?`, 3: `<strong>Example 1:</strong><br>Input: list1 = [1,2,4], list2 = [1,3,4]<br>Output: [1,1,2,3,4,4]<br><br><strong>Follow-up:</strong> Can you solve it both iteratively and recursively?`, 4: `<strong>Example 1:</strong><br>Input: nums = [-2,1,-3,4,-1,2,1,-5,4]<br>Output: 6<br><br><strong>Follow-up:</strong> Can you solve it using Kadane's Algorithm in O(n)?`, 6: `<strong>Example 1:</strong><br>Input: adjList = [[2,4],[1,3],[2,4],[1,3]]<br>Output: [[2,4],[1,3],[2,4],[1,3]]<br><br><strong>Follow-up:</strong> Can you solve it using both BFS and DFS approaches?` };
+  const examples = { 1: `<strong>Example 1:</strong><br>Input: nums = [2,7,11,15], target = 9<br>Output: [0,1]<br><br><strong>Follow-up:</strong> Can you solve it in O(n) using a Hash Map?`, 2: `<strong>Example 1:</strong><br>Input: s = "()"<br>Output: true<br><br><strong>Follow-up:</strong> Can you solve it in O(n) using a Stack?`, 3: `<strong>Example 1:</strong><br>Input: list1 = [1,2,4], list2 = [1,3,4]<br>Output: [1,1,2,3,4,4]<br><br><strong>Follow-up:</strong> Can you solve it both iteratively and recursively?`, 4: `<strong>Example 1:</strong><br>Input: nums = [-2,1,-3,4,-1,2,1,-5,4]<br>Output: 6<br><br><strong>Follow-up:</strong> Can you solve it using Kadane's Algorithm in O(n)?`, 6: `<strong>Example 1:</strong><br>Input: adjList = [[2,4],[1,3],[2,4],[1,3]]<br>Output: [[2,4],[1,3],[2,4],[1,3]]<br><br><strong>Follow-up:</strong> Can you solve it using both BFS and DFS approaches?`, 7: `<strong>Example 1:</strong><br>Input: nums = [10,9,2,5,3,7,101,18]<br>Output: 4<br><br><strong>Follow-up:</strong> Can you improve from O(n²) to O(n log n) using binary search?`, 9: `<strong>Example 1:</strong><br>Input: height = [0,1,0,2,1,0,1,3,2,1,2,1]<br>Output: 6<br><br><strong>Follow-up:</strong> Can you solve it in O(n) time and O(1) space using the two-pointer technique?`, 10: `<strong>Example 1:</strong><br>Input: head = [1,2,3,4,5]<br>Output: [5,4,3,2,1]<br><br><strong>Follow-up:</strong> Can you solve it both iteratively and recursively?`, 11: `<strong>Example 1:</strong><br>Input: root = [4,2,7,1,3,6,9]<br>Output: [4,7,2,9,6,3,1]<br><br><strong>Follow-up:</strong> Can you solve it both recursively and iteratively using a queue or stack?` };
   return examples[problem.id] || "<strong>Example:</strong><br>Solve this problem";
 }
 
@@ -2635,6 +2635,8 @@ function valToLit(v, t) {
   if (t === 'int[]') return '[' + v.map(x => x === null || x === undefined ? 0 : x).join(',') + ']';
   if (t === 'string') return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
   if (t === 'bool') return v ? 'true' : 'false';
+  if (t === 'string[]') return '[' + v.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + ']';
+  if (t === 'string[][]') return '[' + v.map(row => '[' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + ']').join(',') + ']';
   return String(v);
 }
 
@@ -2654,15 +2656,17 @@ function genCppHarness(code, fn, tcs, isClass) {
     let callArgs = '';
     for (let j = 0; j < inTypes.length; j++) {
       if (j > 0) callArgs += ', ';
-      if (inTypes[j] === 'int[]') callArgs += 'vector<int>{' + tcs[i].input[j].map(x => x).join(',') + '}';
+      if (inTypes[j] === 'int[]') callArgs += 'vector<int>{' + tcs[i].input[j].map(x => x === null || x === undefined ? 0 : x).join(',') + '}';
       else if (inTypes[j] === 'int[][]') callArgs += 'vector<vector<int>>{' + tcs[i].input[j].map(row => '{' + row.join(',') + '}').join(',') + '}';
+      else if (inTypes[j] === 'string[]') callArgs += 'vector<string>{' + tcs[i].input[j].map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}';
+      else if (inTypes[j] === 'string[][]') callArgs += 'vector<vector<string>>{' + tcs[i].input[j].map(row => '{' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}').join(',') + '}';
       else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
     }
     s += '    auto __r = ' + fn + '(' + callArgs + ');\n';
     s += '    cout << "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":";\n';
-    let compExpr = '';
+    let compExpr = '"false"';
     if (outType === 'int[]') {
-      compExpr = '(__r == vector<int>{' + tcs[i].expected.map(x => x).join(',') + '} ? "true" : "false")';
+      compExpr = '(__r == vector<int>{' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + '} ? "true" : "false")';
     } else if (outType === 'int[][]') {
       compExpr = '(__r == vector<vector<int>>{' + tcs[i].expected.map(row => '{' + row.join(',') + '}').join(',') + '} ? "true" : "false")';
     } else if (outType === 'int') {
@@ -2672,24 +2676,11 @@ function genCppHarness(code, fn, tcs, isClass) {
     } else if (outType === 'bool') {
       compExpr = '(__r == ' + valToLit(tcs[i].expected, outType) + ' ? "true" : "false")';
     } else {
-      s += '    auto __r = ' + fn + '(' + callArgs + ');\n';
-      s += '    cout << "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":";\n';
-      let compExpr = '';
-      if (outType === 'int[]') {
-        compExpr = '(__r == vector<int>{' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + '} ? "true" : "false")';
-      } else if (outType === 'int') {
-        compExpr = '(__r == ' + valToLit(tcs[i].expected, outType) + ' ? "true" : "false")';
-      } else if (outType === 'string') {
-        compExpr = '(__r == ' + valToLit(tcs[i].expected, outType) + ' ? "true" : "false")';
-      } else if (outType === 'bool') {
-        compExpr = '(__r == ' + valToLit(tcs[i].expected, outType) + ' ? "true" : "false")';
-      } else {
-        compExpr = '"false"';
-      }
-      s += '    cout << ' + compExpr + ';\n';
-      s += '    cout << ",\\"actual\\":" << __j(__r);\n';
-      s += '    cout << "}" << flush;\n';
+      compExpr = '"false"';
     }
+    s += '    cout << ' + compExpr + ';\n';
+    s += '    cout << ",\\"actual\\":" << __j(__r);\n';
+    s += '    cout << "}" << flush;\n';
     s += '  } catch (...) {\n';
     s += '    cout << "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":false,\\"error\\":\\"exception\\"}" << flush;\n';
     s += '  }\n';
@@ -2719,24 +2710,22 @@ function genJavaHarness(code, fn, tcs, isClass) {
     let callArgs = '';
     for (let j = 0; j < inTypes.length; j++) {
       if (j > 0) callArgs += ', ';
-      if (inTypes[j] === 'int[]') callArgs += 'new int[]{' + tcs[i].input[j].map(x => x).join(',') + '}';
+      if (inTypes[j] === 'int[]') callArgs += 'new int[]{' + tcs[i].input[j].map(x => x === null || x === undefined ? 0 : x).join(',') + '}';
       else if (inTypes[j] === 'int[][]') callArgs += 'new int[][]{' + tcs[i].input[j].map(row => '{' + row.join(',') + '}').join(',') + '}';
+      else if (inTypes[j] === 'string[]') callArgs += 'new String[]{' + tcs[i].input[j].map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}';
+      else if (inTypes[j] === 'string[][]') callArgs += 'new String[][]{' + tcs[i].input[j].map(row => '{' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}').join(',') + '}';
       else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
     }
     s += '      ' + javaType + ' __r = new Solution().' + fn + '(' + callArgs + ');\n';
+    let pExpr = 'false';
     if (outType === 'int[]') {
-      s += '      boolean __p = __eq(__r, new int[]{' + tcs[i].expected.map(x => x).join(',') + '});\n';
+      pExpr = '__eq(__r, new int[]{' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + '})';
     } else if (outType === 'int[][]') {
       s += '      boolean __p = __eq(__r, new int[][]{' + tcs[i].expected.map(row => '{' + row.join(',') + '}').join(',') + '});\n';
     } else {
-      s += '      ' + javaType + ' __r = new Solution().' + fn + '(' + callArgs + ');\n';
-      if (outType === 'int[]') {
-        s += '      boolean __p = __eq(__r, new int[]{' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + '});\n';
-      } else {
-        s += '      boolean __p = __r == ' + valToLit(tcs[i].expected, outType) + ';\n';
-      }
-      s += '      __res.append("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":" + __p + ",\\"actual\\":" + __j(__r) + "}");\n';
+      s += '      boolean __p = __r == ' + valToLit(tcs[i].expected, outType) + ';\n';
     }
+    s += '      __res.append("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":" + __p + ",\\"actual\\":" + __j(__r) + "}");\n';
     s += '    } catch (Exception e) {\n';
     s += '      __res.append("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":false,\\"error\\":\\"" + (e.getMessage() != null ? e.getMessage().replace("\\"","\'") : "null") + "\\"}");\n';
     s += '    }\n';
@@ -2752,7 +2741,7 @@ function genCHarness(code, fn, tcs, isClass) {
   s += code + '\n\n';
   if (outType === 'int[]') {
     s += 'void __j(int* v, int n, char* buf) {\n  if (v == NULL) { strcpy(buf, "null"); return; }\n  buf[0] = \'[\'; int pos = 1;\n  for (int i = 0; i < n; i++) { if (i > 0) buf[pos++] = \',\'; pos += sprintf(buf + pos, "%d", v[i]); }\n  buf[pos++] = \']\'; buf[pos] = 0;\n}\n';
-    s += 'int __eq(int* a, int* b, int n) {\n  if (a == NULL && b == NULL) return 1;\n  if (a == NULL || b == NULL) return 0;\n  for (int i = 0; i < n; i++) if (a[i] != b[i]) return 0;\n  return 1;\n}\n';
+    s += 'int __eq(int* a, int* b, int n) {\n  if (n == 0) return 1;\n  if (a == NULL && b == NULL) return 1;\n  if (a == NULL || b == NULL) return 0;\n  for (int i = 0; i < n; i++) if (a[i] != b[i]) return 0;\n  return 1;\n}\n';
   }
   if (outType === 'int[][]') {
     s += 'void __j(int** v, int* sizes, int n, char* buf) {\n  if (v == NULL) { strcpy(buf, "null"); return; }\n  buf[0] = \'[\'; int pos = 1;\n  for (int i = 0; i < n; i++) {\n    if (i > 0) buf[pos++] = \',\';\n    buf[pos++] = \'[\';\n    for (int j = 0; j < sizes[i]; j++) {\n      if (j > 0) buf[pos++] = \',\';\n      pos += sprintf(buf + pos, "%d", v[i][j]);\n    }\n    buf[pos++] = \']\';\n  }\n  buf[pos++] = \']\'; buf[pos] = 0;\n}\n';
@@ -2767,7 +2756,11 @@ function genCHarness(code, fn, tcs, isClass) {
       if (j > 0) callArgs += ', ';
       if (inTypes[j] === 'int[]') {
         const arr = tcs[i].input[j];
-        callArgs += '(int[]){' + arr.map(x => x).join(',') + '}, ' + arr.length;
+        if (arr.length === 0) {
+          callArgs += 'NULL, 0';
+        } else {
+          callArgs += '(int[]){' + arr.map(x => x).join(',') + '}, ' + arr.length;
+        }
       } else if (inTypes[j] === 'int[][]') {
         const arr = tcs[i].input[j];
         if (arr.length === 0) {
@@ -2777,28 +2770,45 @@ function genCHarness(code, fn, tcs, isClass) {
           const sizes = arr.map(row => row.length).join(',');
           callArgs += '(int*[]){' + rows + '}, (int[]){' + sizes + '}, ' + arr.length;
         }
+      } else if (inTypes[j] === 'string[]') {
+        const arr = tcs[i].input[j];
+        callArgs += '(char*[]){' + arr.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}, ' + arr.length;
+      } else if (inTypes[j] === 'string[][]') {
+        const arr = tcs[i].input[j];
+        if (arr.length === 0) {
+          callArgs += 'NULL, NULL, 0';
+        } else {
+          const rows = arr.map(row => row.length === 0 ? 'NULL' : '(char*[]){' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}').join(',');
+          const sizes = arr.map(row => row.length).join(',');
+          callArgs += '(char***){' + rows + '}, (int[]){' + sizes + '}, ' + arr.length;
+        }
       } else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
     }
     if (isClass) {
       s += '  printf("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":true,\\"actual\\":\\"instance\\"}");\n';
     } else if (outType === 'int[]') {
-      const expLen = Array.isArray(tcs[i].expected) ? tcs[i].expected.length : 1;
+      const exp = tcs[i].expected;
+      const expLen = Array.isArray(exp) ? exp.length : 1;
       s += '  printf("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":");\n';
       s += '  int* __r = ' + fn + '(' + callArgs + ');\n';
-      s += '  int __p = __eq(__r, (int[]){' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + '}, ' + expLen + ');\n';
-      s += '  printf(__p ? "true" : "false");\n  printf(",\\"actual\\":");\n  char __buf[256]; __j(__r, ' + expLen + ', __buf); printf("%s", __buf);\n';
+      if (expLen === 0) {
+        s += '  int __p = __eq(__r, NULL, 0);\n';
+      } else {
+        s += '  int __p = __eq(__r, (int[]){' + exp.map(x => x === null || x === undefined ? 0 : x).join(',') + '}, ' + expLen + ');\n';
+      }
+      s += '  printf(__p ? "true" : "false");\n  printf(",\\"actual\\":");\n  char __buf[256]; __j(__r, ' + expLen + ', __buf); printf("%s", __buf);\n  printf("}");\n';
     } else if (outType === 'int[][]') {
       const exp2d = tcs[i].expected;
       const expLen = exp2d.length;
       s += '  int** __r = ' + fn + '(' + callArgs + ');\n';
       if (expLen === 0) {
         s += '  int __p = 1;\n';
-        s += '  printf("true");\n  printf(",\\"actual\\":[]");\n';
+        s += '  printf("true");\n  printf(",\\"actual\\":[]");\n  printf("}");\n';
       } else {
         const expRows = exp2d.map(row => row.length === 0 ? 'NULL' : '(int[]){' + row.join(',') + '}').join(',');
         const expSizes = exp2d.map(row => row.length).join(',');
         s += '  int __p = __eq(__r, (int[]){' + expSizes + '}, ' + expLen + ', (int*[]){' + expRows + '}, (int[]){' + expSizes + '}, ' + expLen + ');\n';
-        s += '  printf(__p ? "true" : "false");\n  printf(",\\"actual\\":");\n  char __buf[1024]; __j(__r, (int[]){' + expSizes + '}, ' + expLen + ', __buf); printf("%s", __buf);\n';
+        s += '  printf(__p ? "true" : "false");\n  printf(",\\"actual\\":");\n  char __buf[1024]; __j(__r, (int[]){' + expSizes + '}, ' + expLen + ', __buf); printf("%s", __buf);\n  printf("}");\n';
       }
     } else {
       const cType = outType === 'string' ? 'char*' : 'int';
@@ -2832,12 +2842,6 @@ function genSwiftHarness(code, fn, tcs, isClass) {
   s += 'func __j(_ v: String) -> String { return "\\"\\(v)\\"" }\n';
   if (outType === 'int[]' || outType === 'int[][]') {
     s += 'func __j(_ v: [Int]) -> String {\n  if v.isEmpty { return "[]" }\n  return "[" + v.map(String.init).joined(separator: ",") + "]"\n}\n';
-  } else if (outType === 'int') {
-    s += 'func __j(_ v: Int) -> String { return String(v) }\n';
-  } else if (outType === 'bool') {
-    s += 'func __j(_ v: Bool) -> String { return v ? "true" : "false" }\n';
-  } else if (outType === 'string') {
-    s += 'func __j(_ v: String) -> String { return "\\"\\(v)\\"" }\n';
   }
   if (outType === 'int[][]') {
     s += 'func __j(_ v: [[Int]]) -> String {\n  return "[" + v.map { __j($0) }.joined(separator: ",") + "]"\n}\n';
@@ -2849,24 +2853,22 @@ function genSwiftHarness(code, fn, tcs, isClass) {
     let callArgs = '';
     for (let j = 0; j < inTypes.length; j++) {
       if (j > 0) callArgs += ', ';
-      if (inTypes[j] === 'int[]') callArgs += '[' + tcs[i].input[j].map(x => x).join(',') + '] as [Int]';
+      if (inTypes[j] === 'int[]') callArgs += '[' + tcs[i].input[j].map(x => x === null || x === undefined ? 0 : x).join(',') + '] as [Int]';
       else if (inTypes[j] === 'int[][]') callArgs += '[' + tcs[i].input[j].map(row => '[' + row.join(',') + ']').join(',') + '] as [[Int]]';
+      else if (inTypes[j] === 'string[]') callArgs += '[' + tcs[i].input[j].map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '] as [String]';
+      else if (inTypes[j] === 'string[][]') callArgs += '[' + tcs[i].input[j].map(row => '[' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + ']').join(',') + '] as [[String]]';
       else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
     }
     s += '  let __r = ' + fn + '(' + callArgs + ')\n';
+    let pExpr = 'false';
     if (outType === 'int[]') {
-      s += '  let __p = __r == [' + tcs[i].expected.map(x => x).join(',') + ']\n';
+      pExpr = '__r == [' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + ']';
     } else if (outType === 'int[][]') {
       s += '  let __p = __r == [' + tcs[i].expected.map(row => '[' + row.join(',') + ']').join(',') + ']\n';
     } else {
-      s += '  let __r = ' + fn + '(' + callArgs + ')\n';
-      if (outType === 'int[]') {
-        s += '  let __p = __r == [' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + ']\n';
-      } else {
-        s += '  let __p = __r == ' + valToLit(tcs[i].expected, outType) + '\n';
-      }
-      s += '  __res += "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":" + (__p ? "true" : "false") + ",\\"actual\\":" + __j(__r) + "}"\n';
+      s += '  let __p = __r == ' + valToLit(tcs[i].expected, outType) + '\n';
     }
+    s += '  __res += "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":" + (__p ? "true" : "false") + ",\\"actual\\":" + __j(__r) + "}"\n';
     s += '} catch {\n';
     s += '  __res += "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":false,\\"error\\":\\"exception\\"}"\n';
     s += '}\n';
@@ -3654,7 +3656,6 @@ async function runPerl() {
 }
 
 
-
 // Inject Report Issue Feature on educational pages
 document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
@@ -3664,3 +3665,410 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(script);
   }
 });
+
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', function(e) {
+    // Ctrl+K: Focus search
+    if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.focus();
+    }
+    
+    // Alt+H: Home
+    if (e.altKey && e.key === 'h') {
+        e.preventDefault();
+        window.location.href = '#home';
+    }
+    
+    // Alt+T: Topics
+    if (e.altKey && e.key === 't') {
+        e.preventDefault();
+        window.location.href = '#topics';
+    }
+    
+    // Alt+P: Practice
+    if (e.altKey && e.key === 'p') {
+        e.preventDefault();
+        window.location.href = '#practice';
+    }
+    
+    // Alt+Q: Quiz
+    if (e.altKey && e.key === 'q') {
+        e.preventDefault();
+        window.location.href = '#quiz';
+    }
+    
+    // Alt+D: Dashboard
+    if (e.altKey && e.key === 'd') {
+        e.preventDefault();
+        window.location.href = '#dashboard';
+    }
+    
+    // Escape: Close modal
+    if (e.key === 'Escape') {
+        closeShortcutModal();
+    }
+});
+
+// Open shortcut modal
+function openShortcutModal() {
+    const modal = document.getElementById('shortcutModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+// Close shortcut modal
+function closeShortcutModal() {
+    const modal = document.getElementById('shortcutModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// ============================================
+// REUSABLE ACCESSIBLE MODAL ARCHITECTURE
+// ============================================
+(function() {
+    function initModalManager() {
+        const activeModals = new Set();
+        
+        function isModalElement(el) {
+            if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+            const classes = el.className?.toString().toLowerCase() || "";
+            const id = el.id?.toLowerCase() || "";
+            return classes.includes('modal') || 
+                   id.includes('modal') || 
+                   el.getAttribute('role') === 'dialog' || 
+                   el.getAttribute('aria-modal') === 'true';
+        }
+        
+        function getFocusableElements(el) {
+            return el.querySelectorAll('a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]');
+        }
+
+        function setupModalAccessibility(modal) {
+            if (!modal.getAttribute('role')) {
+                modal.setAttribute('role', 'dialog');
+            }
+            modal.setAttribute('aria-modal', 'true');
+            
+            const header = modal.querySelector('h2, h3, h4, .modal-title, .quiz-modal-header h3');
+            if (header && !modal.getAttribute('aria-labelledby')) {
+                if (!header.id) {
+                    header.id = 'modal-title-' + Math.random().toString(36).substr(2, 9);
+                }
+                modal.setAttribute('aria-labelledby', header.id);
+            }
+        }
+
+        function trapFocus(e, modal) {
+            if (e.key !== 'Tab') return;
+            const focusable = Array.from(getFocusableElements(modal)).filter(el => el.tabIndex !== -1);
+            if (focusable.length === 0) return;
+            
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            
+            if (e.shiftKey) {
+                if (document.activeElement === first) {
+                    last.focus();
+                    e.preventDefault();
+                }
+            } else {
+                if (document.activeElement === last) {
+                    first.focus();
+                    e.preventDefault();
+                }
+            }
+        }
+
+        function handleModalOpen(modal) {
+            if (activeModals.has(modal)) return;
+            activeModals.add(modal);
+            
+            setupModalAccessibility(modal);
+            
+            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+            document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
+            document.body.classList.add('modal-open');
+            
+            modal._trapFocusListener = (e) => trapFocus(e, modal);
+            modal.addEventListener('keydown', modal._trapFocusListener);
+            
+            const focusable = getFocusableElements(modal);
+            modal._previouslyFocused = document.activeElement;
+            if (focusable.length > 0) {
+                setTimeout(() => focusable[0].focus(), 50);
+            }
+            
+            if (!modal._overlayCloseBound) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal(modal);
+                    }
+                });
+                modal._overlayCloseBound = true;
+            }
+        }
+
+        function handleModalClose(modal) {
+            if (!activeModals.has(modal)) return;
+            activeModals.delete(modal);
+            
+            if (modal._trapFocusListener) {
+                modal.removeEventListener('keydown', modal._trapFocusListener);
+                modal._trapFocusListener = null;
+            }
+            
+            if (modal._previouslyFocused && modal._previouslyFocused.focus) {
+                modal._previouslyFocused.focus();
+                modal._previouslyFocused = null;
+            }
+            
+            if (activeModals.size === 0) {
+                document.body.classList.remove('modal-open');
+            }
+        }
+
+        function closeModal(modal) {
+            if (modal.classList.contains('active')) {
+                modal.classList.remove('active');
+            } else if (modal.style.display && modal.style.display !== 'none') {
+                modal.style.display = 'none';
+            } else if (modal.classList.contains('show')) {
+                modal.classList.remove('show');
+            } else if (!modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function checkElement(element) {
+            if (!isModalElement(element)) return;
+            
+            const isVisible = element.classList.contains('active') || 
+                              element.classList.contains('show') || 
+                              element.style.display === 'flex' || 
+                              element.style.display === 'block' ||
+                              (element.style.display && element.style.display !== 'none' && !element.classList.contains('hidden')) ||
+                              (!element.classList.contains('hidden') && element.classList.contains('active')) ||
+                              (element.classList.contains('modal-overlay') && !element.classList.contains('hidden'));
+            
+            if (isVisible) {
+                handleModalOpen(element);
+            } else {
+                handleModalClose(element);
+            }
+        }
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes') {
+                    checkElement(mutation.target);
+                } else if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            if (isModalElement(node)) {
+                                checkElement(node);
+                            }
+                            node.querySelectorAll && node.querySelectorAll('.modal, .modal-overlay, [class*="modal"]').forEach(checkElement);
+                        }
+                    });
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+            attributeFilter: ['class', 'style']
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                activeModals.forEach(modal => {
+                    closeModal(modal);
+                });
+            }
+        });
+
+        document.querySelectorAll('.modal, .modal-overlay, [class*="modal"]').forEach(checkElement);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initModalManager);
+    } else {
+        initModalManager();
+    }
+})();
+
+// ============================================
+// PROFILE EDITING & LANGUAGES MANAGER
+// ============================================
+(function() {
+    const PROFILE_AVATARS = ["🚀", "💻", "🧠", "🔥", "🦄", "⚡", "🤖", "🎨"];
+    let selectedProfileAvatar = "";
+
+    window.openProfileModal = function() {
+        const modal = document.getElementById("profileEditModal");
+        const nameInput = document.getElementById("profileNameInput");
+        
+        if (nameInput) nameInput.value = userProgress.name || "Learner";
+        selectedProfileAvatar = userProgress.avatar || "🚀";
+        
+        renderAvatarOptions();
+        
+        const userLangs = userProgress.languages || [];
+        const checkboxes = document.querySelectorAll(".lang-edit-checkbox");
+        checkboxes.forEach(cb => {
+            cb.checked = userLangs.includes(cb.value);
+        });
+        
+        if (modal) modal.classList.add("active");
+    };
+
+    window.closeProfileModal = function() {
+        const modal = document.getElementById("profileEditModal");
+        if (modal) modal.classList.remove("active");
+    };
+
+    window.selectProfileAvatar = function(av) {
+        selectedProfileAvatar = av;
+        renderAvatarOptions();
+    };
+
+    function renderAvatarOptions() {
+        const avatarOpts = document.getElementById("avatarOptions");
+        if (!avatarOpts) return;
+        avatarOpts.innerHTML = PROFILE_AVATARS.map(av => `
+            <span class="avatar-option ${selectedProfileAvatar === av ? 'selected' : ''}" 
+                  onclick="selectProfileAvatar('${av}')" 
+                  style="cursor: pointer; font-size: 2rem; padding: 0.25rem 0.5rem; border-radius: 8px; border: 2px solid ${selectedProfileAvatar === av ? 'var(--primary)' : 'transparent'}; transition: all 0.2s; display: inline-block;">
+                ${av}
+            </span>
+        `).join("");
+    }
+
+    window.saveProfileChanges = function() {
+        const nameInput = document.getElementById("profileNameInput");
+        const nameVal = nameInput ? nameInput.value.trim() : "";
+        
+        if (!nameVal) {
+            alert("Please enter a valid display name.");
+            return;
+        }
+        
+        const userLangs = [];
+        const checkboxes = document.querySelectorAll(".lang-edit-checkbox");
+        checkboxes.forEach(cb => {
+            if (cb.checked) userLangs.push(cb.value);
+        });
+        
+        userProgress.name = nameVal;
+        userProgress.avatar = selectedProfileAvatar;
+        userProgress.languages = userLangs;
+        
+        if (typeof saveUserData === 'function') {
+            saveUserData();
+        } else {
+            localStorage.setItem("algoInfinityVerse", JSON.stringify(userProgress));
+        }
+        
+        updateProfileViews();
+        window.closeProfileModal();
+        
+        if (typeof showNotification === 'function') {
+            showNotification("Profile updated successfully!", "success");
+        }
+    };
+
+    window.renderLanguageChips = function() {
+        if (typeof userProgress === 'undefined') return;
+        const userLangs = userProgress.languages || [];
+        const containers = [
+            document.getElementById("profileLanguagesSection"),
+            document.getElementById("profileLanguages")
+        ];
+        
+        const colors = {
+            "C++": "#f34b7d",
+            "Java": "#b07219",
+            "Python": "#3572A5",
+            "JavaScript": "#f1e05a",
+            "Rust": "#dea584"
+        };
+
+        const textColors = {
+            "JavaScript": "#000000"
+        };
+        
+        containers.forEach(container => {
+            if (!container) return;
+            if (userLangs.length === 0) {
+                container.innerHTML = `<span style="color: var(--text-secondary); font-size: 0.9rem; font-style: italic;">No languages added yet. Click edit to add!</span>`;
+                return;
+            }
+            
+            container.innerHTML = userLangs.map(lang => {
+                const bg = colors[lang] || "var(--primary)";
+                const color = textColors[lang] || "#ffffff";
+                return `
+                    <span class="lang-chip" style="
+                        display: inline-flex;
+                        align-items: center;
+                        background: ${bg};
+                        color: ${color};
+                        font-size: 0.8rem;
+                        font-weight: 600;
+                        padding: 0.3rem 0.8rem;
+                        border-radius: 20px;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    ">${lang}</span>
+                `;
+            }).join("");
+        });
+    };
+
+    function updateProfileViews() {
+        const profileName = document.getElementById("profileName");
+        if (profileName) profileName.textContent = userProgress.name;
+        const profileSectionName = document.getElementById("profileSectionName");
+        if (profileSectionName) profileSectionName.textContent = userProgress.name;
+        
+        const userNameEl = document.getElementById("userName");
+        if (userNameEl) userNameEl.textContent = userProgress.name;
+        const cardUserName = document.getElementById("cardUserName");
+        if (cardUserName) cardUserName.textContent = userProgress.name;
+        
+        document.querySelectorAll(".avatar-icon").forEach(el => el.textContent = userProgress.avatar || "🚀");
+        const cardAvatar = document.getElementById("cardAvatar");
+        if (cardAvatar) cardAvatar.textContent = userProgress.avatar || "🚀";
+        
+        if (typeof initIdentityCard === 'function') {
+            initIdentityCard();
+        }
+        
+        window.renderLanguageChips();
+    }
+
+    function setupProfileListeners() {
+        const mainEditBtn = document.getElementById("profileSectionEditBtn");
+        if (mainEditBtn) mainEditBtn.onclick = window.openProfileModal;
+        const pageEditBtn = document.getElementById("profilePageEditBtn");
+        if (pageEditBtn) pageEditBtn.onclick = window.openProfileModal;
+        
+        const closeCrossBtn = document.getElementById("profileModalClose");
+        if (closeCrossBtn) closeCrossBtn.onclick = window.closeProfileModal;
+        
+        window.renderLanguageChips();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupProfileListeners);
+    } else {
+        setupProfileListeners();
+    }
+    
+    setTimeout(setupProfileListeners, 200);
+})();
