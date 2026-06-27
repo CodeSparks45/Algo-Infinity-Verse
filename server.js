@@ -400,9 +400,27 @@ async function handleApi(req, res, pathname) {
         });
       }
      
-      const payload = await readJsonBody(req);
+      let payload;
+      try {
+        payload = await readJsonBody(req);
+      } catch (err) {
+        const tooLarge = err?.message === "Request body is too large.";
+        return sendJson(res, tooLarge ? 413 : 400, {
+          success: false,
+          message: tooLarge ? "Request body is too large." : "Invalid JSON body.",
+        });
+      }
       const sourceCode = payload.sourceCode ?? payload.source_code;
       const { language, stdin } = payload;
+
+      if (
+        typeof sourceCode !== "string" ||
+        !sourceCode.trim() ||
+        typeof language !== "string" ||
+        !language.trim()
+      ) {
+        return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
+      }
 
       if (!sourceCode || !language) {
         return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
