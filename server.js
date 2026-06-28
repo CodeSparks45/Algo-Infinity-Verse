@@ -9,102 +9,84 @@ import { extractResumeText } from "./backend/resume-analyzer/parser.js";
 import { calculateATS } from "./backend/resume-analyzer/atsScore.js";
 import { findMissingSkills } from "./backend/resume-analyzer/skills.js";
 import { getSuggestions } from "./backend/resume-analyzer/suggestions.js";
+import { analyzeWorkflow } from "./backend/repository-analyzer/cicdValidator.js";
+import { VCSFactory } from "./backend/vcs/VCSFactory.js";
+import { enqueueBulkAudit, getBatchProgress } from "./backend/jobs/queue.js";
+import "./backend/jobs/worker.js"; // Initialize worker
 
-const upload = multer({ storage: multer.memoryStorage() }).single("resume");
+import { parse as csvParse } from "csv-parse/sync";
+import { v4 as uuidv4 } from "uuid";
+import { generateSdlcAdvice } from "./sdlcAdvisor.js";
+import { handleReportRequest } from "./backend/reports/reportGenerator.js";
+import { getUserBenchmark } from "./backend/benchmarking/percentileService.js";
+import { Server as SocketIOServer } from "socket.io";
+import { 
+  ACCESS_TOKEN_MAX_AGE_SECONDS, getClientIdentifier, isSignupRateLimited, 
+  recordSignupAttempt, normalizeAuthDelay, createAccessToken, 
+  verifyAccessToken, hashPassword, passwordMatches, validateSignup,
+  createRefreshToken, verifyRefreshToken, revokeTokenFamily,
+  activeRefreshFamilies
+} from "./backend/services/auth.service.js";
+import {
+  applyRateLimit,
+  loginLimiter,
+  signupLimiter,
+  forgotPasswordLimiter,
+  changePasswordLimiter,
+  deleteAccountLimiter,
+  resendVerificationLimiter
+} from "./backend/utils/rateLimiter.js";
+import { applySM2 } from "./backend/services/memory.service.js";
+import { sendVerificationEmail } from "./backend/services/email.service.js";
+import {
+  createBattle,
+  joinBattle,
+  submitSolution,
+  getBattle,
+  getHistory,
+} from "./pages/Dsa-Battle/Battleservice.js";
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+}).single("resume");
+const uploadCsv = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit
+}).single("csv");
+
+function validateMagicBytes(buffer, mimeType) {
+  if (!buffer || buffer.length < 4) return false;
+  const hex = buffer.slice(0, 4).toString("hex").toUpperCase();
+  
+  if (mimeType === "application/pdf") {
+    return hex === "25504446";
+  }
+  if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return hex === "504B0304";
+  }
+  if (mimeType === "application/msword") {
+    return hex === "D0CF11E0";
+  }
+  return false;
+}
+const userSocketMap = new Map();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const MEMORY_FILE = path.join(DATA_DIR, "memory.json");
+const TEAM_PROFILES_FILE = path.join(DATA_DIR, "team_profiles.json");
+const AUDITS_FILE = path.join(DATA_DIR, "audits_history.json");
 const SESSION_COOKIE = "aiv_session";
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
-const PBKDF2_ITERATIONS = 210000;
-const PASSWORD_KEY_LENGTH = 32;
+const ACCESS_COOKIE = "aiv_access";
+const REFRESH_COOKIE = "aiv_refresh";
 
-// ── Rate limiting ────────────────────────────────────────────────────────────
-const SIGNUP_RATE_LIMIT = 5;
-const SIGNUP_WINDOW_MS = 15 * 60 * 1000;
-const signupAttempts = new Map();
 const DELETION_LOG_FILE = path.join(
   DATA_DIR,
   "account-deletions.json"
 );
-
-// Periodic sweeper — runs every SIGNUP_WINDOW_MS and deletes any identifier
-// whose timestamps have all aged out of the window.  This bounds the Map to
-// only identifiers that have been active within the last window period and
-// prevents unbounded memory growth under a sustained stream of unique IPs.
-const _signupSweeper = setInterval(() => {
-  const now = Date.now();
-  for (const [identifier, timestamps] of signupAttempts) {
-    const fresh = timestamps.filter((t) => now - t < SIGNUP_WINDOW_MS);
-    if (fresh.length === 0) {
-      signupAttempts.delete(identifier);
-    } else {
-      signupAttempts.set(identifier, fresh);
-    }
-  }
-}, SIGNUP_WINDOW_MS);
-
-// Allow the process to exit cleanly even while the interval is live
-// (relevant in test environments and graceful-shutdown scenarios).
-if (_signupSweeper.unref) _signupSweeper.unref();
-
-// IPs of reverse-proxies / load-balancers that are allowed to set
-// X-Forwarded-For.  Add your proxy CIDRs / IPs here or populate via
-// the TRUSTED_PROXIES env var (comma-separated) at startup.
-const TRUSTED_PROXIES = new Set(
-  (process.env.TRUSTED_PROXIES || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
-);
-
-function getClientIdentifier(req) {
-  const remoteAddress = req.socket?.remoteAddress || "unknown";
-
-  // Only honour X-Forwarded-For when the immediate TCP caller is a
-  // known trusted proxy — otherwise an attacker can supply any value
-  // they like and trivially bypass rate limiting.
-  if (
-    remoteAddress !== "unknown" &&
-    TRUSTED_PROXIES.has(remoteAddress) &&
-    req.headers["x-forwarded-for"]
-  ) {
-    // The left-most entry is the original client IP added by the
-    // first proxy in the chain; everything to the right can be spoofed.
-    const leftmost = req.headers["x-forwarded-for"].split(",")[0].trim();
-    if (leftmost) return leftmost;
-  }
-
-  return remoteAddress;
-}
-
-function isSignupRateLimited(identifier) {
-  const now = Date.now();
-  const attempts = signupAttempts.get(identifier) || [];
-  // Trim stale timestamps on every read so the per-identifier array stays
-  // small even between sweeper runs.
-  const recentAttempts = attempts.filter((t) => now - t < SIGNUP_WINDOW_MS);
-  signupAttempts.set(identifier, recentAttempts);
-  return recentAttempts.length >= SIGNUP_RATE_LIMIT;
-}
-
-function recordSignupAttempt(identifier) {
-  const now = Date.now();
-  const attempts = signupAttempts.get(identifier) || [];
-  // Trim before appending so the array never accumulates beyond
-  // SIGNUP_RATE_LIMIT + 1 entries between sweeper passes.
-  const recentAttempts = attempts.filter((t) => now - t < SIGNUP_WINDOW_MS);
-  recentAttempts.push(now);
-  signupAttempts.set(identifier, recentAttempts);
-}
-
-async function normalizeAuthDelay() {
-  return new Promise((resolve) => setTimeout(resolve, 500));
-}
 // ────────────────────────────────────────────────────────────────────────────
 
 const protectedPaths = new Set([
@@ -159,74 +141,6 @@ async function loadEnvFile() {
   }
 }
 
-function base64Url(input) {
-  return Buffer.from(input)
-    .toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-}
-
-function fromBase64Url(input) {
-  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
-  return Buffer.from(normalized, "base64").toString("utf8");
-}
-
-function sessionSecret() {
-  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("SESSION_SECRET is required in production.");
-  }
-  return "dev-only-change-me-with-SESSION_SECRET-before-deploying";
-}
-
-function sign(value) {
-  return crypto
-    .createHmac("sha256", sessionSecret())
-    .update(value)
-    .digest("base64url");
-}
-
-function createSessionToken(user) {
-  const header = base64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const payload = base64Url(
-    JSON.stringify({
-      sub: user.id,
-      name: user.name,
-      email: user.email,
-      exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SECONDS,
-    }),
-  );
-  const body = `${header}.${payload}`;
-  return `${body}.${sign(body)}`;
-}
-
-function verifySessionToken(token) {
-  if (!token) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [header, payload, signature] = parts;
-  const body = `${header}.${payload}`;
-  const expected = sign(body);
-  const signatureBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (
-    signatureBuffer.length !== expectedBuffer.length ||
-    !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
-  ) {
-    return null;
-  }
-
-  try {
-    const session = JSON.parse(fromBase64Url(payload));
-    if (!session.exp || session.exp < Math.floor(Date.now() / 1000))
-      return null;
-    return session;
-  } catch {
-    return null;
-  }
-}
-
 function parseCookies(cookieHeader = "") {
   return cookieHeader.split(";").reduce((cookies, part) => {
     const [rawName, ...rawValue] = part.trim().split("=");
@@ -236,21 +150,26 @@ function parseCookies(cookieHeader = "") {
   }, {});
 }
 
-function sessionCookie(token, req) {
+function getRefreshToken(req) {
+  const cookies = parseCookies(req.headers.cookie || "");
+  return cookies[REFRESH_COOKIE] || null;
+}
+
+function authCookies(token, req) {
   const secure = req.headers["x-forwarded-proto"] === "https";
   return [
     `${SESSION_COOKIE}=${encodeURIComponent(token)}`,
     "HttpOnly",
     "SameSite=Lax",
     "Path=/",
-    `Max-Age=${SESSION_MAX_AGE_SECONDS}`,
+    `Max-Age=${ACCESS_TOKEN_MAX_AGE_SECONDS}`,
     secure ? "Secure" : "",
   ]
     .filter(Boolean)
     .join("; ");
 }
 
-function clearSessionCookie() {
+function clearAuthCookies() {
   return `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
 }
 
@@ -268,7 +187,7 @@ async function getUserByEmail(email) {
     .limit(1)
     .get();
   if (snapshot.empty) return null;
-  return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+  return { ...snapshot.docs[0].data(), id: snapshot.docs[0].id };
 }
 
 async function createUser(userData) {
@@ -279,7 +198,7 @@ async function createUser(userData) {
     return userData;
   }
   const docRef = await db.collection(COLLECTIONS.USERS).add(userData);
-  return { id: docRef.id, ...userData };
+  return { ...userData, id: docRef.id };
 }
 
 async function ensureUserStore() {
@@ -300,6 +219,26 @@ async function readUsers() {
 async function writeUsers(users) {
   await ensureUserStore();
   await fs.writeFile(USERS_FILE, `${JSON.stringify(users, null, 2)}\n`);
+}
+
+async function ensureAuditsStore() {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  try {
+    await fs.access(AUDITS_FILE);
+  } catch {
+    await fs.writeFile(AUDITS_FILE, "[]\n");
+  }
+}
+
+async function readAudits() {
+  await ensureAuditsStore();
+  const raw = await fs.readFile(AUDITS_FILE, "utf8");
+  return JSON.parse(raw || "[]");
+}
+
+async function writeAudits(audits) {
+  await ensureAuditsStore();
+  await fs.writeFile(AUDITS_FILE, `${JSON.stringify(audits, null, 2)}\n`);
 }
 
 // ── Memory Scanner (Spaced Repetition, SM-2) ─────────────────────────────────
@@ -333,14 +272,20 @@ async function writeMemoryStoreAtomic(filePath, store) {
 
 // Serializes read-modify-write cycles so concurrent /api/memory/* requests
 // cannot clobber each other's updates. `mutator` receives the current store
-// and must return the updated store.
+// and must return the updated store (or modify it in-place).
 async function updateMemoryStore(mutator) {
   const task = memoryWriteQueue.then(async () => {
     await ensureMemoryStore();
     const raw = await fs.readFile(MEMORY_FILE, "utf8");
     const store = JSON.parse(raw || "{}");
     const updated = await mutator(store);
-    await writeMemoryStoreAtomic(MEMORY_FILE, store);
+    // Write the updated store if the mutator returned a new store object.
+    // If the mutator mutated in-place and returned undefined or a sub-resource
+    // (such as a card object), we write the mutated store.
+    const isCard = updated && typeof updated === "object" && ("topic" in updated || "nextReviewDate" in updated || "repetitions" in updated);
+    const isNewStore = updated && typeof updated === "object" && !isCard;
+    const storeToSave = isNewStore && updated !== store ? updated : store;
+    await writeMemoryStoreAtomic(MEMORY_FILE, storeToSave);
     return updated;
   });
 
@@ -348,91 +293,47 @@ async function updateMemoryStore(mutator) {
   memoryWriteQueue = task.catch(() => {});
   return task;
 }
-// SM-2 algorithm: quality is 0-5 (0 = total blackout, 5 = perfect recall)
-function applySM2(card, quality) {
-  const q = Math.max(0, Math.min(5, Number(quality)));
-  let { repetitions = 0, easeFactor = 2.5, interval = 0 } = card || {};
 
-  if (q < 3) {
-    repetitions = 0;
-    interval = 1;
-  } else {
-    repetitions += 1;
-    if (repetitions === 1) interval = 1;
-    else if (repetitions === 2) interval = 6;
-    else interval = Math.round(interval * easeFactor);
+let teamProfilesWriteQueue = Promise.resolve();
+
+async function ensureTeamProfilesStore() {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  try {
+    await fs.access(TEAM_PROFILES_FILE);
+  } catch {
+    await fs.writeFile(TEAM_PROFILES_FILE, "{}\n");
   }
-
-  easeFactor = easeFactor + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
-  if (easeFactor < 1.3) easeFactor = 1.3;
-
-  const now = new Date();
-  const nextReviewDate = new Date(now);
-  nextReviewDate.setDate(now.getDate() + interval);
-
-  return {
-    topic: card?.topic,
-    repetitions,
-    easeFactor: Math.round(easeFactor * 100) / 100,
-    interval,
-    lastReviewed: now.toISOString(),
-    nextReviewDate: nextReviewDate.toISOString(),
-    lastQuality: q,
-  };
 }
+
+async function readTeamProfilesStore() {
+  await ensureTeamProfilesStore();
+  const raw = await fs.readFile(TEAM_PROFILES_FILE, "utf8");
+  return JSON.parse(raw || "{}");
+}
+
+async function writeTeamProfilesStoreAtomic(filePath, store) {
+  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(tmpPath, `${JSON.stringify(store, null, 2)}\n`);
+  await fs.rename(tmpPath, filePath);
+}
+
+async function updateTeamProfilesStore(mutator) {
+  const task = teamProfilesWriteQueue.then(async () => {
+    await ensureTeamProfilesStore();
+    const raw = await fs.readFile(TEAM_PROFILES_FILE, "utf8");
+    const store = JSON.parse(raw || "{}");
+    const updated = await mutator(store);
+    await writeTeamProfilesStoreAtomic(TEAM_PROFILES_FILE, store);
+    return updated;
+  });
+
+  teamProfilesWriteQueue = task.catch((err) => {
+    console.error("[updateTeamProfilesStore] Write task failed:", err);
+  });
+  return task;
+}
+
 // ──────────────────────────────────────────────────────────────────────────
-
-function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
-  const hash = crypto
-    .pbkdf2Sync(
-      password,
-      salt,
-      PBKDF2_ITERATIONS,
-      PASSWORD_KEY_LENGTH,
-      "sha256",
-    )
-    .toString("hex");
-  return { salt, hash, iterations: PBKDF2_ITERATIONS, digest: "sha256" };
-}
-
-function passwordMatches(password, stored) {
-  const calculated = crypto.pbkdf2Sync(
-    password,
-    stored.salt,
-    stored.iterations || PBKDF2_ITERATIONS,
-    PASSWORD_KEY_LENGTH,
-    stored.digest || "sha256",
-  );
-  const saved = Buffer.from(stored.hash, "hex");
-  return (
-    saved.length === calculated.length &&
-    crypto.timingSafeEqual(saved, calculated)
-  );
-}
-
-function validateSignup({ name, email, password, confirmPassword }) {
-  const cleanName = String(name || "").trim();
-  const cleanEmail = String(email || "")
-    .trim()
-    .toLowerCase();
-  const rawPassword = String(password || "");
-  const rawConfirm = String(confirmPassword || "");
-
-  if (cleanName.length < 2) return "Name must be at least 2 characters.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-    return "Enter a valid email address.";
-  }
-  if (rawPassword.length < 8) return "Password must be at least 8 characters.";
-  if (
-    !/[a-z]/.test(rawPassword) ||
-    !/[A-Z]/.test(rawPassword) ||
-    !/\d/.test(rawPassword)
-  ) {
-    return "Password must include uppercase, lowercase, and a number.";
-  }
-  if (rawPassword !== rawConfirm) return "Passwords do not match.";
-  return null;
-}
 
 async function readJsonBody(req) {
   let body = "";
@@ -445,6 +346,8 @@ async function readJsonBody(req) {
 }
 
 function sendJson(res, status, body, headers = {}) {
+  // Note: COOP header omitted to allow Firebase signInWithPopup to access popup.closed
+  // when opening cross-origin OAuth popups (Google, etc.)
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     ...headers,
@@ -459,7 +362,7 @@ function redirect(res, location, headers = {}) {
 
 function getSession(req) {
   const cookies = parseCookies(req.headers.cookie || "");
-  return verifySessionToken(cookies[SESSION_COOKIE]);
+  return verifyAccessToken(cookies[SESSION_COOKIE]);
 }
 
 function normalizePathname(pathname) {
@@ -505,6 +408,297 @@ function validateRequest(req) {
 }
 
 async function handleApi(req, res, pathname) {
+  if (pathname === "/api/csrf-token" && req.method === "GET") {
+    const secret = crypto.randomBytes(32).toString("hex");
+    const token = crypto.createHmac("sha256", process.env.CSRF_SALT || "infinity-verse-secure-salt")
+                        .update(secret)
+                        .digest("hex");
+    const isProd = process.env.NODE_ENV === "production";
+    const cookieString = `csrfSecret=${secret}; HttpOnly; ${isProd ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=3600`;
+    return sendJson(res, 200, { csrfToken: token }, { "Set-Cookie": cookieString });
+  }
+
+  if (pathname === "/api/log-error" && req.method === "POST") {
+    try {
+      const payload = await readJsonBody(req);
+      const logFile = path.join(DATA_DIR, "client_errors.json");
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      let currentLogs = [];
+      try {
+        const raw = await fs.readFile(logFile, "utf8");
+        currentLogs = JSON.parse(raw || "[]");
+      } catch (e) {
+        // file might not exist
+      }
+      currentLogs.push(payload);
+      await fs.writeFile(logFile, `${JSON.stringify(currentLogs, null, 2)}\n`);
+      return sendJson(res, 200, { success: true });
+    } catch (err) {
+      console.error("Error logging client error:", err);
+      return sendJson(res, 500, { error: "Failed to log error" });
+    }
+  }
+  
+  if (pathname === "/api/execute" && req.method === "POST") {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return sendJson(res, 401, {
+          success: false,
+          message: "Authentication required.",
+        });
+      }
+
+      let payload;
+      try {
+        payload = await readJsonBody(req);
+      } catch (err) {
+        const tooLarge = err?.message === "Request body is too large.";
+        return sendJson(res, tooLarge ? 413 : 400, {
+          success: false,
+          message: tooLarge ? "Request body is too large." : "Invalid JSON body.",
+        });
+      }
+      const sourceCode = payload.sourceCode ?? payload.source_code;
+      const { language, stdin } = payload;
+
+      if (
+        typeof sourceCode !== "string" ||
+        !sourceCode.trim() ||
+        typeof language !== "string" ||
+        !language.trim()
+      ) {
+        return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
+      }
+
+      if (!sourceCode || !language) {
+        return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
+      }
+
+      const languageMap = {
+        'javascript': { lang: 'nodejs', version: '4' },
+        'python': { lang: 'python3', version: '3' },
+        'cpp': { lang: 'cpp17', version: '0' },
+        'java': { lang: 'java', version: '4' }
+      };
+
+      const targetLang = languageMap[language.toLowerCase()];
+
+      if (!targetLang) {
+         return sendJson(res, 400, { success: false, message: 'Unsupported language.' });
+      }
+
+      // JDoodle API call
+      const response = await fetch('https://api.jdoodle.com/v1/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              clientId: process.env.JDOODLE_CLIENT_ID,
+              clientSecret: process.env.JDOODLE_CLIENT_SECRET,
+              script: sourceCode,
+              language: targetLang.lang,
+              versionIndex: targetLang.version,
+              stdin: stdin || ""
+          })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+          console.error("JDoodle API Error:", data);
+          return sendJson(res, 500, { 
+              success: false, 
+              message: 'Compiler API error', 
+              details: data 
+          });
+      }
+
+     
+      return sendJson(res, 200, {
+          success: true,
+          data: {
+              output: data.output,
+              memory: data.memory,
+              cpuTime: data.cpuTime
+          }
+      });
+    } catch (error) {
+        console.error('Server Execution Error:', error);
+        return sendJson(res, 500, { success: false, message: 'Internal server proxy error.' });
+    }
+  }
+
+  if (pathname === "/api/team-profile" && req.method === "GET") {
+    try {
+      const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
+      const teamId = urlParams.get("id");
+      
+      if (!teamId) {
+        return sendJson(res, 400, { error: "Missing team id." });
+      }
+
+      let profileData = null;
+
+      if (!useFirestore) {
+        const store = await readTeamProfilesStore();
+        profileData = store[teamId] || null;
+      } else {
+        const docRef = db.collection(COLLECTIONS.TEAM_PROFILES).doc(teamId);
+        const snapshot = await docRef.get();
+        if (snapshot.exists) {
+          profileData = snapshot.data();
+        }
+      }
+
+      if (!profileData) {
+        // Return default profile with version 1
+        return sendJson(res, 200, {
+          id: teamId,
+          version: 1,
+          name: "New Team Profile",
+          description: "",
+          members: []
+        });
+      }
+
+      return sendJson(res, 200, profileData);
+    } catch (error) {
+      console.error("Fetch team profile error:", error);
+      return sendJson(res, 500, { error: "Failed to fetch team profile." });
+    }
+  }
+
+  if (pathname === "/api/team-profile" && req.method === "POST") {
+    try {
+      const payload = await readJsonBody(req);
+      const { id: teamId, version, name, description, members } = payload;
+
+      if (!teamId) {
+        return sendJson(res, 400, { error: "Missing team id." });
+      }
+
+      if (version === undefined || version === null) {
+        return sendJson(res, 400, { error: "Missing version for concurrency control." });
+      }
+
+      let updatedProfile = null;
+
+      if (!useFirestore) {
+        try {
+          updatedProfile = await updateTeamProfilesStore(store => {
+            const currentProfile = store[teamId] || { version: 1 };
+            
+            // OCC version check
+            if (currentProfile.version !== version) {
+              const conflictError = new Error("Conflict");
+              conflictError.status = 409;
+              conflictError.currentVersion = currentProfile.version;
+              throw conflictError;
+            }
+
+            // Update data and increment version
+            const newProfile = {
+              id: teamId,
+              name: name || currentProfile.name || "New Team Profile",
+              description: description !== undefined ? description : (currentProfile.description || ""),
+              members: members || currentProfile.members || [],
+              version: version + 1,
+              updatedAt: new Date().toISOString()
+            };
+
+            store[teamId] = newProfile;
+            return newProfile;
+          });
+        } catch (error) {
+          if (error.status === 409) {
+            return sendJson(res, 409, { 
+              error: "Conflict detected: The profile was updated by someone else.",
+              currentVersion: error.currentVersion
+            });
+          }
+          throw error;
+        }
+      } else {
+        const docRef = db.collection(COLLECTIONS.TEAM_PROFILES).doc(teamId);
+        try {
+          updatedProfile = await db.runTransaction(async (transaction) => {
+            const doc = await transaction.get(docRef);
+            
+            const currentVersion = doc.exists ? doc.data().version : 1;
+
+            if (currentVersion !== version) {
+              const conflictError = new Error("Conflict");
+              conflictError.status = 409;
+              conflictError.currentVersion = currentVersion;
+              throw conflictError;
+            }
+
+            const newProfile = {
+              id: teamId,
+              name: name || (doc.exists ? doc.data().name : "New Team Profile"),
+              description: description !== undefined ? description : (doc.exists ? doc.data().description : ""),
+              members: members || (doc.exists ? doc.data().members : []),
+              version: version + 1,
+              updatedAt: new Date().toISOString()
+            };
+
+            transaction.set(docRef, newProfile);
+            return newProfile;
+          });
+        } catch (error) {
+          if (error.status === 409) {
+            return sendJson(res, 409, { 
+              error: "Conflict detected: The profile was updated by someone else.",
+              currentVersion: error.currentVersion
+            });
+          }
+          throw error;
+        }
+      }
+
+      return sendJson(res, 200, updatedProfile);
+    } catch (error) {
+      console.error("Update team profile error:", error);
+      return sendJson(res, 500, { error: "Failed to update team profile." });
+    }
+  }
+
+  if (
+    pathname === "/api/debug-env" &&
+    req.method === "GET" &&
+    process.env.NODE_ENV !== "production"
+  ) {
+    const keys = ["FIREBASE_API_KEY","FIREBASE_AUTH_DOMAIN","FIREBASE_PROJECT_ID","FIREBASE_STORAGE_BUCKET","FIREBASE_MESSAGING_SENDER_ID","FIREBASE_APP_ID","FIREBASE_CLIENT_EMAIL","FIREBASE_PRIVATE_KEY","SESSION_SECRET"];
+    const vars = {};
+    keys.forEach(k => {
+      const v = process.env[k];
+      vars[k] = v ? v.slice(0, 6) + "..." + v.slice(-4) : "(not set)";
+    });
+    return sendJson(res, 200, vars);
+  }
+  if (pathname === "/api/firebase-config" && req.method === "GET") {
+    const apiKey = process.env.FIREBASE_API_KEY;
+    const authDomain = process.env.FIREBASE_AUTH_DOMAIN;
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+    const messagingSenderId = process.env.FIREBASE_MESSAGING_SENDER_ID;
+    const appId = process.env.FIREBASE_APP_ID;
+
+    if (!apiKey || !authDomain || !projectId || !storageBucket || !messagingSenderId || !appId) {
+      return sendJson(res, 503, { configured: false, error: "Firebase not configured" });
+    }
+
+    return sendJson(res, 200, {
+      configured: true,
+      apiKey,
+      authDomain,
+      projectId,
+      storageBucket,
+      messagingSenderId,
+      appId,
+    });
+  }
+
   if (pathname === "/api/analyze-resume" && req.method === "POST") {
     try {
       await new Promise((resolve, reject) => {
@@ -516,6 +710,19 @@ async function handleApi(req, res, pathname) {
 
       if (!req.file) {
         return sendJson(res, 400, { error: "No resume file uploaded." });
+      }
+
+      const allowedMimeTypes = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword"
+      ];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return sendJson(res, 400, { error: "Unsupported file type. Upload PDF or DOCX." });
+      }
+
+      if (!validateMagicBytes(req.file.buffer, req.file.mimetype)) {
+        return sendJson(res, 400, { error: "File content mismatch. The uploaded file's content does not match its type." });
       }
 
       const text = await extractResumeText(req.file);
@@ -540,123 +747,406 @@ async function handleApi(req, res, pathname) {
     }
   }
 
-  if (pathname === "/api/session" && req.method === "GET") {
+  if (pathname === "/api/analyze-repository" && req.method === "POST") {
+    try {
+      const payload = await readJsonBody(req);
+      const { repoUrl } = payload;
+      
+      if (!repoUrl || !repoUrl.includes("github.com")) {
+        return sendJson(res, 400, { error: "Please provide a valid GitHub repository URL." });
+      }
+
+      const provider = VCSFactory.getProvider(repoUrl);
+      const workflows = await provider.getNormalizedWorkflows();
+      
+      if (workflows.length === 0) {
+        return sendJson(res, 200, {
+          score: 0,
+          workflowsAnalyzed: 0,
+          details: { hasDependencies: false, hasTests: false },
+          recommendations: ["No GitHub Actions workflows found in .github/workflows. Add a CI/CD pipeline to automate testing."]
+        });
+      }
+
+      let bestScore = -1;
+      let overallDeps = false;
+      let overallTests = false;
+
+      for (const wf of workflows) {
+        const result = analyzeWorkflow(wf.commands);
+        if (result.score > bestScore) bestScore = result.score;
+        if (result.hasDependencies) overallDeps = true;
+        if (result.hasTests) overallTests = true;
+      }
+
+      const recommendations = [];
+      if (bestScore === 20) recommendations.push("Workflows found, but they contain no functional jobs or steps.");
+      if (bestScore === 50) recommendations.push("Add explicit testing commands (like 'npm test') to your workflow.");
+      if (bestScore === 75) recommendations.push("Ensure dependencies are installed securely before running tests.");
+      if (bestScore === 100) recommendations.push("Excellent! Fully functional CI/CD pipeline detected.");
+
+      return sendJson(res, 200, {
+        score: bestScore,
+        workflowsAnalyzed: workflows.length,
+        details: {
+          hasDependencies: overallDeps,
+          hasTests: overallTests
+        },
+        recommendations
+      });
+
+    } catch (err) {
+      console.error("Repository analysis error:", err.message);
+      return sendJson(res, 500, { error: "Failed to analyze repository. " + err.message });
+    }
+  }
+
+  // SDLC Advisor API
+  if (pathname === "/api/sdlc-advisor" && req.method === "POST") {
+    try {
+      const payload = await readJsonBody(req);
+      const { description } = payload;
+      if (!description) {
+        return sendJson(res, 400, { error: "Project description is required." });
+      }
+      const advice = await generateSdlcAdvice(description);
+      return sendJson(res, 200, advice);
+    } catch (e) {
+      console.error("SDLC Advisor error:", e);
+      return sendJson(res, 500, { error: "Failed to generate SDLC advice." });
+    }
+  }
+
+  // Bulk Audit APIs
+  if (pathname === "/api/audit/bulk" && req.method === "POST") {
+    try {
+      uploadCsv(req, res, async (err) => {
+        if (err) return sendJson(res, 500, { error: "Upload error." });
+        if (!req.file) return sendJson(res, 400, { error: "No CSV file uploaded." });
+        
+        try {
+          const records = csvParse(req.file.buffer.toString('utf-8'), { columns: false, skip_empty_lines: true });
+          // Extract repo URLs from the first column
+          const repoUrls = records.map(row => row[0]).filter(url => url && url.includes("github.com"));
+          
+          if (repoUrls.length === 0) {
+            return sendJson(res, 400, { error: "No valid GitHub URLs found in the CSV." });
+          }
+
+          const batchId = uuidv4();
+          await enqueueBulkAudit(batchId, repoUrls);
+
+          return sendJson(res, 202, {
+            message: "Bulk audit accepted and queued.",
+            batchId,
+            totalJobs: repoUrls.length
+          });
+        } catch (parseErr) {
+          console.error("CSV Parse Error:", parseErr);
+          return sendJson(res, 400, { error: "Failed to parse CSV file." });
+        }
+      });
+      return; // Async multer
+    } catch (err) {
+      return sendJson(res, 500, { error: "Failed to queue bulk audit." });
+    }
+  }
+
+  if (pathname.startsWith("/api/audit/bulk/") && req.method === "GET") {
+    const batchId = pathname.split("/").pop();
+    const progress = getBatchProgress(batchId);
+    if (!progress) {
+      return sendJson(res, 404, { error: "Batch not found." });
+    }
+    return sendJson(res, 200, progress);
+  }
+
+
+  if (pathname === "/api/logout" && req.method === "POST") {
+    const rToken = getRefreshToken(req);
+    if (rToken) {
+      const decoded = verifyRefreshToken(rToken);
+      if (decoded) revokeTokenFamily(decoded.familyId);
+    }
+    return sendJson(res, 200, { success: true }, { "Set-Cookie": clearAuthCookies() });
+  }
+
+  if (pathname === "/api/refresh" && req.method === "POST") {
+    const rToken = getRefreshToken(req);
+    if (!rToken) return sendJson(res, 401, { error: "No refresh token" });
+    
+    const decoded = verifyRefreshToken(rToken);
+    if (!decoded) return sendJson(res, 401, { error: "Invalid or expired refresh token" }, { "Set-Cookie": clearAuthCookies() });
+    revokeTokenFamily(decoded.familyId);
+
+    // Find user
+    const users = useFirestore ? [] : await readUsers();
+    let user;
+    if (useFirestore) {
+      user = await getUserByEmail(decoded.email);
+      if (!user) {
+        try {
+          const snapshot = await db.collection("users").doc(decoded.sub).get();
+          if (snapshot.exists) user = { ...snapshot.data(), id: snapshot.id };
+        } catch(e) {}
+      }
+    } else {
+      user = users.find(u => u.id === decoded.sub);
+    }
+
+    if (!user) return sendJson(res, 401, { error: "User not found" }, { "Set-Cookie": clearAuthCookies() });
+
+    const accessToken = createAccessToken(user);
+    const refreshToken = createRefreshToken(user, decoded.familyId);
+    
+    return sendJson(res, 200, { success: true }, { "Set-Cookie": authCookies(accessToken, refreshToken, req) });
+  }
+
+if (pathname === "/api/session" && req.method === "GET") {
     const session = getSession(req);
+    
+    
+    if (!session) {
+      return sendJson(res, 200, { authenticated: false, user: null });
+    }
+    
+    if (!session) {
+      return sendJson(res, 200, { authenticated: false, user: null });
+    }
     return sendJson(res, 200, {
-      authenticated: Boolean(session),
-      user: session,
+      authenticated: true,
+      user: {
+        id: session.sub,
+        name: session.name,
+        sub: session.sub,
+        email: session.email,
+      },
     });
   }
 
   if (pathname === "/api/signup" && req.method === "POST") {
-    // ── Rate limit check ─────────────────────────────────────────────────────
-    const clientId = getClientIdentifier(req);
+    try {
+      if (!applyRateLimit(req, res, signupLimiter, "Too many signup attempts. Please try again later.")) {
+        return;
+      }
 
-    if (isSignupRateLimited(clientId)) {
-      await normalizeAuthDelay();
-      return sendJson(res, 429, {
-        error: "Too many signup attempts. Please try again later.",
-      });
-    }
+      const payload = await readJsonBody(req);
+      const validationError = validateSignup(payload);
+      if (validationError) return sendJson(res, 400, { error: validationError });
 
-    // Record the attempt before processing so every inbound request counts,
-    // including those that fail validation or find a duplicate email.
-    recordSignupAttempt(clientId);
-    // ─────────────────────────────────────────────────────────────────────────
+      const email = String(payload.email).trim().toLowerCase();
+      const existing = await getUserByEmail(email);
+      if (existing) {
+        await normalizeAuthDelay();
+        return sendJson(res, 409, { error: "An account with this email already exists." });
+      }
 
-    const payload = await readJsonBody(req);
-    const validationError = validateSignup(payload);
-    if (validationError) return sendJson(res, 400, { error: validationError });
-
-    const email = String(payload.email).trim().toLowerCase();
-    const existing = useFirestore
-      ? await getUserByEmail(email)
-      : (await readUsers()).find((user) => user.email === email);
-    if (existing) {
-      // Normalize response time so a duplicate is indistinguishable from a
-      // real signup by timing — a real signup always runs PBKDF2 before
-      // responding, so we must delay here to match that latency profile.
-      await normalizeAuthDelay();
-      console.warn("[signup] duplicate email attempt", {
+      const verifyToken = crypto.randomBytes(32).toString("hex");
+      const user = {
+        id: crypto.randomUUID(),
+        name: String(payload.name).trim(),
         email,
-        ip: clientId,
-        at: new Date().toISOString(),
-      });
-      // Return a generic 200 that is indistinguishable from a real signup
-      // success so callers cannot enumerate registered email addresses.
-      // No session cookie is issued — the submitter has not authenticated.
-      return sendJson(res, 200, { ok: true });
+        password: hashPassword(String(payload.password)),
+        createdAt: new Date().toISOString(),
+        isDeactivated: false,
+        deactivatedAt: null,
+        emailVerified: true,
+        verifyToken,
+        verifyTokenExpiry: Date.now() + 24 * 60 * 60 * 1000,
+      };
+      await createUser(user);
+
+      const token = createAccessToken(user);
+      loginLimiter.reset(getClientIdentifier(req));
+      return sendJson(
+        res, 200,
+        { user: { id: user.id, name: user.name, email: user.email } },
+        { "Set-Cookie": authCookies(token, req) },
+      );
+    } catch (error) {
+      console.error("[signup] Unexpected error:", error);
+      return sendJson(res, 500, { error: "Signup failed due to a server error." });
     }
-
-    const user = {
-      id: crypto.randomUUID(),
-      name: String(payload.name).trim(),
-      email,
-      password: hashPassword(String(payload.password)),
-      createdAt: new Date().toISOString(),
-      isDeactivated: false,
-  deactivatedAt: null,
-    };
-    await createUser(user);
-
-    const token = createSessionToken(user);
-    return sendJson(
-      res,
-      201,
-      { user: { id: user.id, name: user.name, email: user.email } },
-      { "Set-Cookie": sessionCookie(token, req) },
-    );
   }
 
   if (pathname === "/api/login" && req.method === "POST") {
-    const payload = await readJsonBody(req);
-    const email = String(payload.email || "")
-      .trim()
-      .toLowerCase();
-    const password = String(payload.password || "");
-    const user = useFirestore
-      ? await getUserByEmail(email)
-      : (await readUsers()).find((candidate) => candidate.email === email);
-    if (!user || !passwordMatches(password, user.password)) {
-      return sendJson(res, 401, { error: "Invalid email or password." });
+    try {
+      if (!applyRateLimit(req, res, loginLimiter, "Too many login attempts. Please try again later.")) {
+        return;
+      }
+      const payload = await readJsonBody(req);
+      const email = String(payload.email || "").trim().toLowerCase();
+      const password = String(payload.password || "");
+      const user = await getUserByEmail(email);
+      if (!user || !user.password || !passwordMatches(password, user.password)) {
+        return sendJson(res, 401, { error: "Invalid email or password." });
+      }
+
+      if (!user.emailVerified) {
+        return sendJson(res, 403, {
+          error: "Please verify your email before logging in.",
+          requiresVerification: true,
+          email: user.email,
+        });
+      }
+
+      if (user.isDeactivated) {
+        user.isDeactivated = false;
+        user.deactivatedAt = null;
+        if (useFirestore) {
+          await db.collection(COLLECTIONS.USERS).doc(user.id).update({
+            isDeactivated: false,
+            deactivatedAt: null,
+          });
+        } else {
+          const users = await readUsers();
+          const index = users.findIndex((u) => u.id === user.id);
+          if (index !== -1) {
+            users[index] = user;
+            await writeUsers(users);
+          }
+        }
+      }
+
+      const token = createAccessToken(user);
+      loginLimiter.reset(getClientIdentifier(req));
+      return sendJson(
+        res, 200,
+        { user: { id: user.id, name: user.name, email: user.email } },
+        { "Set-Cookie": authCookies(token, req) },
+      );
+    } catch (error) {
+      console.error("[login] Unexpected error:", error);
+      return sendJson(res, 500, { error: "Login failed due to a server error." });
+    }
+  }
+
+  if (pathname === "/api/auth/google" && req.method === "POST") {
+    if (!process.env.FIREBASE_PROJECT_ID) {
+      return sendJson(res, 500, { error: "Firebase is not configured for authentication. Set FIREBASE_PROJECT_ID environment variable." });
     }
 
-    if (user.isDeactivated) {
-  user.isDeactivated = false;
-  user.deactivatedAt = null;
+    try {
+      const body = await readJsonBody(req);
+      const { idToken } = body;
+      if (!idToken) {
+        return sendJson(res, 400, { error: "Missing idToken" });
+      }
 
-  const users = await readUsers();
-  const index = users.findIndex((u) => u.id === user.id);
+      let decoded;
+      try {
+        const apiKey = process.env.FIREBASE_API_KEY;
+        if (!apiKey) throw new Error("FIREBASE_API_KEY not configured");
 
-  if (index !== -1) {
-    users[index] = user;
-    await writeUsers(users);
-  }
-}
+        const tokenResponse = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          }
+        );
 
-    const token = createSessionToken(user);
-    return sendJson(
-      res,
-      200,
-      { user: { id: user.id, name: user.name, email: user.email } },
-      { "Set-Cookie": sessionCookie(token, req) },
-    );
+        if (!tokenResponse.ok) {
+          const errText = await tokenResponse.text();
+          throw new Error(`Lookup failed: ${tokenResponse.status} ${errText}`);
+        }
+
+        const tokenData = await tokenResponse.json();
+        if (!tokenData.users || tokenData.users.length === 0) throw new Error("No user found for token");
+
+        const u = tokenData.users[0];
+        decoded = {
+          uid: u.localId,
+          email: u.email,
+          name: u.displayName || u.email,
+          picture: u.photoUrl || null,
+          emailVerified: u.emailVerified === true,
+        };
+      } catch (verifyError) {
+        console.error("Token verification failed:", verifyError.message);
+        return sendJson(res, 401, { error: "Invalid token" });
+      }
+
+      const { uid, email, name, picture } = decoded;
+      const cleanEmail = (email || "").toLowerCase().trim();
+      const displayName = name || cleanEmail.split("@")[0] || "Learner";
+
+      let user = null;
+      if (!useFirestore) {
+        return sendJson(res, 503, { error: "User accounts require Firebase Firestore in serverless mode. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY environment variables." });
+      }
+      const snapshot = await db
+        .collection(COLLECTIONS.USERS)
+        .where("firebaseUid", "==", uid)
+        .limit(1)
+        .get();
+      if (!snapshot.empty) {
+        user = { ...snapshot.docs[0].data(), id: snapshot.docs[0].id };
+      } else {
+        const emailSnapshot = await db
+          .collection(COLLECTIONS.USERS)
+          .where("email", "==", cleanEmail)
+          .limit(1)
+          .get();
+        if (!emailSnapshot.empty) {
+          user = { ...emailSnapshot.docs[0].data(), id: emailSnapshot.docs[0].id };
+        }
+      }
+
+      if (user) {
+        user.name = displayName;
+        user.avatar = picture || user.avatar;
+        user.lastLogin = new Date().toISOString();
+        if (!user.firebaseUid) user.firebaseUid = uid;
+        if (!user.authProvider) user.authProvider = "google";
+        await db.collection(COLLECTIONS.USERS).doc(user.id).update({
+          name: displayName, avatar: picture || null,
+          lastLogin: new Date().toISOString(),
+          firebaseUid: uid, authProvider: "google",
+        });
+      } else {
+        const newUser = {
+          id: uid, name: displayName, email: cleanEmail,
+          avatar: picture || null, firebaseUid: uid,
+          authProvider: "google",
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+        };
+        user = await createUser(newUser);
+      }
+
+      const token = createAccessToken(user);
+      const cookie = authCookies(token, req);
+
+      return sendJson(res, 200, {
+        authenticated: true,
+        user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar },
+      }, { "Set-Cookie": cookie });
+
+    } catch (error) {
+      console.error("Google auth error:", error.message || error);
+      return sendJson(res, 500, { error: "Internal server error" });
+    }
   }
 
   if (pathname === "/api/change-password" && req.method === "POST") {
-  const session = getSession(req);
+    if (!applyRateLimit(req, res, changePasswordLimiter, "Too many change password attempts. Please try again later.")) {
+      return;
+    }
+    const session = getSession(req);
 
-  if (!session) {
-    return sendJson(res, 401, {
-      error: "Login required.",
-    });
-  }
+    if (!session) {
+      return sendJson(res, 401, {
+        error: "Login required.",
+      });
+    }
 
-  const {
-    currentPassword,
-    newPassword,
-    confirmPassword,
-  } = await readJsonBody(req);
+    const {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    } = await readJsonBody(req);
 
   if (
     !currentPassword ||
@@ -719,6 +1209,8 @@ async function handleApi(req, res, pathname) {
 
   await writeUsers(users);
 
+  changePasswordLimiter.reset(getClientIdentifier(req));
+
   return sendJson(
     res,
     200,
@@ -728,7 +1220,7 @@ async function handleApi(req, res, pathname) {
         "Password updated successfully.",
     },
     {
-      "Set-Cookie": clearSessionCookie(),
+      "Set-Cookie": clearAuthCookies(),
     }
   );
 }
@@ -762,7 +1254,7 @@ async function handleApi(req, res, pathname) {
     200,
     { success: true },
     {
-      "Set-Cookie": clearSessionCookie(),
+      "Set-Cookie": clearAuthCookies(),
     },
   );
 }
@@ -771,6 +1263,9 @@ if (
   pathname === "/api/delete-account" &&
   req.method === "POST"
 ) {
+  if (!applyRateLimit(req, res, deleteAccountLimiter, "Too many delete account attempts. Please try again later.")) {
+    return;
+  }
   const session = getSession(req);
 
   if (!session) {
@@ -848,17 +1343,60 @@ if (
     },
     {
       "Set-Cookie":
-        clearSessionCookie(),
+        clearAuthCookies(),
     }
   );
 }
+if (pathname === "/api/forgot-password" && req.method === "POST") {
+    if (!applyRateLimit(req, res, forgotPasswordLimiter, "Too many forgot password attempts. Please try again later.")) {
+      return;
+    }
+    let payload;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      return sendJson(res, 400, { error: "Invalid JSON body." });
+    }
 
+    const email = String(payload.email || "").trim().toLowerCase();
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return sendJson(res, 400, { error: "Valid email required." });
+    }
+
+    try {
+      const { initializeApp, getApps } = await import("firebase/app");
+      const { getAuth, sendPasswordResetEmail } = await import("firebase/auth");
+
+      const configRes = await fetch(`http://127.0.0.1:${process.env.PORT || 3000}/api/firebase-config`);
+      const firebaseConfig = await configRes.json();
+
+      if (firebaseConfig.configured) {
+        const existingApps = getApps();
+        const clientApp = existingApps.find(a => a.name === "reset-client") ||
+          initializeApp({
+            apiKey: firebaseConfig.apiKey,
+            authDomain: firebaseConfig.authDomain,
+            projectId: firebaseConfig.projectId,
+          }, "reset-client");
+
+        const auth = getAuth(clientApp);
+        await sendPasswordResetEmail(auth, email);
+      }
+    } catch (err) {
+      // Silently fail — don't expose whether email exists
+      console.warn("[forgot-password]", err.message);
+    }
+
+    // Always return success to prevent email enumeration
+    return sendJson(res, 200, { message: "Reset email sent if account exists." });
+  }
   if (pathname === "/api/logout" && req.method === "POST") {
     return sendJson(
       res,
       200,
       { ok: true },
-      { "Set-Cookie": clearSessionCookie() },
+      { "Set-Cookie": clearAuthCookies() },
     );
   }
 
@@ -872,7 +1410,17 @@ if (
     }
 
     const { feedbackType, subject, message } = payload;
-    if (!feedbackType || !subject || !message) {
+    if (
+      typeof feedbackType !== "string" ||
+      typeof subject !== "string" ||
+      typeof message !== "string"
+    ) {
+      return sendJson(res, 400, {
+        error: "Feedback type, subject, and message must be strings.",
+      });
+    }
+
+    if (!feedbackType.trim() || !subject.trim() || !message.trim()) {
       return sendJson(res, 400, {
         error: "Feedback type, subject, and message are required.",
       });
@@ -938,6 +1486,44 @@ if (
       console.error("Error saving feedback:", err);
       return sendJson(res, 500, { error: "Failed to save feedback." });
     }
+  }
+
+  if (pathname === "/api/user/profile" && req.method === "GET") {
+    const session = getSession(req);
+    
+    const userData = {
+        user: {
+            name: session?.name || 'John Doe',
+            username: session?.email?.split('@')[0] || 'johndoe',
+            avatar: '🚀',
+            bio: 'Passionate about DSA and building cool stuff!',
+            joinedDate: '2024-01-15'
+        },
+        stats: {
+            totalSolved: 45,
+            xp: 2800,
+            streak: 7,
+            level: 4
+        },
+        badges: ['🌟 First Steps', '🔥 On Fire', '💎 Diamond'],
+        languages: [
+            { name: 'JavaScript', percentage: 80 },
+            { name: 'Python', percentage: 65 },
+            { name: 'Java', percentage: 50 },
+            { name: 'C++', percentage: 40 }
+        ],
+        projects: [
+            { name: 'Weather App', description: 'Real-time weather app', link: '#' },
+            { name: 'Task Manager', description: 'Manage tasks easily', link: '#' }
+        ],
+        recentActivity: [
+            { action: 'Solved Two Sum', date: '2026-06-26' },
+            { action: 'Completed Arrays Quiz', date: '2026-06-25' },
+            { action: 'Earned Diamond Badge', date: '2026-06-24' }
+        ]
+    };
+    
+    return sendJson(res, 200, { success: true, data: userData });
   }
 
   if (pathname === "/api/interview-experiences" && req.method === "POST") {
@@ -1009,6 +1595,109 @@ if (
       return sendJson(res, 500, {
         error: "Failed to save interview experience.",
       });
+    }
+  }
+
+  if (pathname === "/api/audit/history" && req.method === "POST") {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Login required." });
+
+    try {
+      const payload = await readJsonBody(req);
+      const auditData = {
+        auditId: crypto.randomUUID(),
+        userId: session.sub,
+        repoUrl: payload.repoUrl || "unknown",
+        timestamp: new Date().toISOString(),
+        overallScore: Number(payload.overallScore) || 0,
+        categoryScores: payload.categoryScores || {},
+        issuesCount: Number(payload.issuesCount) || 0,
+        recommendations: payload.recommendations || []
+      };
+
+      if (useFirestore) {
+        await db.collection(COLLECTIONS.AUDITS_HISTORY).doc(auditData.auditId).set(auditData);
+      } else {
+        const audits = await readAudits();
+        audits.push(auditData);
+        await writeAudits(audits);
+      }
+
+      return sendJson(res, 201, { success: true, auditId: auditData.auditId });
+    } catch (err) {
+      console.error("Error saving audit history:", err);
+      return sendJson(res, 500, { error: "Failed to save audit history." });
+    }
+  }
+
+  if (pathname === "/api/audit/history" && req.method === "GET") {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Login required." });
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const repoUrl = url.searchParams.get("repoUrl");
+    const limit = Number(url.searchParams.get("limit")) || 20;
+
+    try {
+      let history = [];
+      if (useFirestore) {
+        let query = db.collection(COLLECTIONS.AUDITS_HISTORY)
+          .where("userId", "==", session.sub);
+        
+        if (repoUrl) {
+          query = query.where("repoUrl", "==", repoUrl);
+        }
+        
+        const snapshot = await query.orderBy("timestamp", "desc").limit(limit).get();
+        history = snapshot.docs.map(doc => doc.data());
+      } else {
+        const allAudits = await readAudits();
+        history = allAudits.filter(a => a.userId === session.sub);
+        if (repoUrl) {
+          history = history.filter(a => a.repoUrl === repoUrl);
+        }
+        history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        history = history.slice(0, limit);
+      }
+
+      return sendJson(res, 200, history);
+    } catch (err) {
+      console.error("Error fetching audit history:", err);
+      return sendJson(res, 500, { error: "Failed to fetch audit history." });
+    }
+  }
+
+  if (pathname === "/api/audit/trends" && req.method === "GET") {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Login required." });
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const repoUrl = url.searchParams.get("repoUrl");
+
+    try {
+      let history = [];
+      if (useFirestore) {
+        let query = db.collection(COLLECTIONS.AUDITS_HISTORY)
+          .where("userId", "==", session.sub);
+        if (repoUrl) query = query.where("repoUrl", "==", repoUrl);
+        const snapshot = await query.orderBy("timestamp", "asc").get();
+        history = snapshot.docs.map(doc => doc.data());
+      } else {
+        const allAudits = await readAudits();
+        history = allAudits.filter(a => a.userId === session.sub);
+        if (repoUrl) history = history.filter(a => a.repoUrl === repoUrl);
+        history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      }
+
+      const trends = history.map(a => ({
+        timestamp: a.timestamp,
+        overallScore: a.overallScore
+      }));
+
+      return sendJson(res, 200, trends);
+    } catch (err) {
+      console.error("Error fetching audit trends:", err);
+      return sendJson(res, 500, { error: "Failed to fetch audit trends." });
     }
   }
 
@@ -1200,6 +1889,180 @@ if (
     }
   }
 
+  if (pathname === "/api/reports/export/pdf" || pathname === "/api/reports/export/image") {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Authentication required." });
+    return await handleReportRequest(req, res, pathname, session);
+  }
+
+  if (pathname === "/api/user/benchmark" && req.method === "GET") {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Authentication required." });
+    
+    try {
+        const benchmark = await getUserBenchmark(session.sub);
+        return sendJson(res, 200, { success: true, benchmark });
+    } catch (err) {
+        console.error("Benchmark error:", err);
+        return sendJson(res, 500, { error: "Failed to generate benchmark." });
+    }
+  }
+
+  // ── Battle routes ──────────────────────────────────────────────────────────
+  // All battle routes require Firestore. If useFirestore is false (local dev
+  // with no Firebase env vars), we return 503 rather than crashing.
+  // All routes require an active session — unauthenticated requests get 401.
+ 
+  if (pathname === "/api/battles" && req.method === "POST") {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Login required." });
+    if (!useFirestore) return sendJson(res, 503, { error: "Battle mode requires Firestore." });
+ 
+    try {
+      const { opponentEmail, difficulty } = await readJsonBody(req);
+      if (!opponentEmail?.trim()) {
+        return sendJson(res, 400, { error: "opponentEmail is required." });
+      }
+      if (!["Easy", "Medium", "Hard"].includes(difficulty)) {
+        return sendJson(res, 400, { error: "difficulty must be Easy, Medium, or Hard." });
+      }
+      const battleId = await createBattle(session.sub, opponentEmail.trim(), difficulty);
+      return sendJson(res, 201, { battleId });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+ 
+  // GET /api/battles/history  — must be declared BEFORE the :id pattern below
+  // or "history" gets captured as a battle ID.
+  if (pathname === "/api/battles/history" && req.method === "GET") {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Login required." });
+    if (!useFirestore) return sendJson(res, 503, { error: "Battle mode requires Firestore." });
+ 
+    try {
+      const params = new URL(req.url, `http://${req.headers.host}`).searchParams;
+      const limit      = Math.min(parseInt(params.get("limit") || "20", 10), 50);
+      const startAfter = params.get("cursor") || null;
+      const history = await getHistory(session.sub, limit, startAfter);
+      return sendJson(res, 200, {
+        history,
+        nextCursor: history.length === limit ? history[history.length - 1].id : null,
+      });
+    } catch (err) {
+      return sendJson(res, 400, { error: err.message });
+    }
+  }
+ 
+  // Dynamic battle routes: /api/battles/:id and /api/battles/:id/(join|submit|result)
+  const battleMatch = pathname.match(
+    /^\/api\/battles\/([^/]+?)(?:\/(join|submit|result))?$/
+  );
+ 
+  if (battleMatch) {
+    const session = getSession(req);
+    if (!session) return sendJson(res, 401, { error: "Login required." });
+    if (!useFirestore) return sendJson(res, 503, { error: "Battle mode requires Firestore." });
+ 
+    const [, battleId, action] = battleMatch;
+ 
+    // GET /api/battles/:id — poll endpoint, returns state + timeRemainingMs
+    if (!action && req.method === "GET") {
+      try {
+        const battle = await getBattle(battleId);
+        return sendJson(res, 200, battle);
+      } catch (err) {
+        return sendJson(res, 404, { error: err.message });
+      }
+    }
+ 
+    // POST /api/battles/:id/join
+    if (action === "join" && req.method === "POST") {
+      try {
+        const result = await joinBattle(battleId, session.sub);
+        return sendJson(res, 200, result);
+      } catch (err) {
+        return sendJson(res, 400, { error: err.message });
+      }
+    }
+ 
+    // POST /api/battles/:id/submit
+    if (action === "submit" && req.method === "POST") {
+      try {
+        const { code } = await readJsonBody(req);
+        if (!code?.trim()) {
+          return sendJson(res, 400, { error: "code is required." });
+        }
+        const result = await submitSolution(battleId, session.sub, code);
+        return sendJson(res, 200, result);
+      } catch (err) {
+        return sendJson(res, 400, { error: err.message });
+      }
+    }
+ 
+    // GET /api/battles/:id/result
+    if (action === "result" && req.method === "GET") {
+      try {
+        const battle = await getBattle(battleId);
+        if (!["completed", "expired"].includes(battle.status)) {
+          return sendJson(res, 409, { error: "Battle is not finished yet." });
+        }
+        return sendJson(res, 200, {
+          winner:     battle.winner,
+          xpAwarded:  battle.xpAwarded,
+          status:     battle.status,
+        });
+      } catch (err) {
+        return sendJson(res, 404, { error: err.message });
+      }
+    }
+  }
+  // ── End battle routes ─────
+
+  if (pathname === "/api/verify-email" && req.method === "GET") {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const token = url.searchParams.get("token");
+    if (!token) return sendJson(res, 400, { error: "Missing token." });
+
+    const users = await readUsers();
+    const idx = users.findIndex(
+      (u) => u.verifyToken === token && u.verifyTokenExpiry > Date.now()
+    );
+    if (idx === -1) return sendJson(res, 400, { error: "Link is invalid or expired." });
+
+    users[idx].emailVerified = true;
+    users[idx].verifyToken = null;
+    users[idx].verifyTokenExpiry = null;
+    await writeUsers(users);
+
+    const sessionToken = createAccessToken(users[idx]);
+    res.setHeader("Set-Cookie", authCookies(sessionToken, req));
+    return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === "/api/resend-verification" && req.method === "POST") {
+    if (!applyRateLimit(req, res, resendVerificationLimiter, "Too many verification requests. Please try again later.")) {
+      return;
+    }
+    const body = await readJsonBody(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    if (!email) return sendJson(res, 400, { error: "Email required." });
+
+    const users = await readUsers();
+    const idx = users.findIndex((u) => u.email === email);
+    if (idx === -1 || users[idx].emailVerified) return sendJson(res, 200, { ok: true });
+
+    const newToken = crypto.randomBytes(32).toString("hex");
+    users[idx].verifyToken = newToken;
+    users[idx].verifyTokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+    await writeUsers(users);
+
+    sendVerificationEmail(email, users[idx].name, newToken).catch((err) =>
+      console.error("[email] Resend failed:", err)
+    );
+    return sendJson(res, 200, { ok: true });
+  }
+
   return sendJson(res, 404, { error: "Not found." });
 }
 
@@ -1207,7 +2070,9 @@ function resolveStaticPath(pathname) {
 const routes = {
   "/": "index.html",
   "/login": "pages/auth/login.html",
+  "/profile": "pages/profile/public-profile.html",
   "/signup": "pages/auth/signup.html",
+  "/verify-email": "pages/auth/verify-email.html",
     "/community": "community.html",
     "/python-learning": "python-learning.html",
     "/javascript-learning": "javascript-learning.html",
@@ -1270,6 +2135,22 @@ const routes = {
   return filePath;
 }
 
+function getCacheControlHeader(ext) {
+  if (ext === ".html") {
+    return "no-store, no-cache, must-revalidate, private";
+  }
+  if (ext === ".css" || ext === ".js" || ext === ".json") {
+    return "no-cache, public";
+  }
+  if ([".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp"].includes(ext)) {
+    return "public, max-age=86400";
+  }
+  if ([".woff", ".woff2", ".eot", ".ttf", ".otf"].includes(ext)) {
+    return "public, max-age=2592000, immutable";
+  }
+  return "no-cache";
+}
+
 async function serveStatic(req, res, pathname) {
   const filePath = resolveStaticPath(pathname);
   if (!filePath) {
@@ -1282,12 +2163,59 @@ async function serveStatic(req, res, pathname) {
     const target = stat.isDirectory()
       ? path.join(filePath, "index.html")
       : filePath;
+    
+    const fileStat = await fs.stat(target);
     const ext = path.extname(target);
-    const content = await fs.readFile(target);
-    res.writeHead(200, {
-      "Content-Type": mimeTypes[ext] || "application/octet-stream",
+
+    // ETag generation based on file size and mtime
+    const mtimeMs = fileStat.mtime.getTime();
+    const size = fileStat.size;
+    const etag = `W/"${size}-${mtimeMs}"`;
+    const cacheControl = getCacheControlHeader(ext);
+
+    const headers = {
       "X-Content-Type-Options": "nosniff",
-    });
+      "X-Frame-Options": "SAMEORIGIN",
+      "X-XSS-Protection": "1; mode=block",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
+      "Cache-Control": cacheControl,
+      "ETag": etag,
+    };
+
+    // Handle If-None-Match conditional request
+    const clientEtag = req.headers["if-none-match"];
+    if (clientEtag === etag) {
+      headers["Content-Type"] = mimeTypes[ext] || "application/octet-stream";
+      res.writeHead(304, headers);
+      return res.end();
+    }
+
+    let content = await fs.readFile(target);
+
+    if (ext === ".html") {
+      // Generate a dynamic nonce for CSP script elements
+      const nonce = crypto.randomBytes(16).toString("base64");
+      
+      // Inject nonce into script tags in the HTML content
+      let htmlStr = content.toString("utf-8");
+      htmlStr = htmlStr.replace(/<script(\s|>)/gi, `<script nonce="${nonce}"$1`);
+      content = Buffer.from(htmlStr, "utf-8");
+
+      headers["Content-Security-Policy"] = 
+        `default-src 'self'; ` +
+        `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://apis.google.com; ` +
+        `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; ` +
+        `font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; ` +
+        `img-src 'self' data: https: blob:; ` +
+        `connect-src 'self' https: wss:; ` +
+        `frame-src 'self' https://*.firebaseapp.com; ` +
+        `object-src 'none'; ` +
+        `base-uri 'self';`;
+    }
+
+    headers["Content-Type"] = mimeTypes[ext] || "application/octet-stream";
+    res.writeHead(200, headers);
     res.end(content);
   } catch {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
@@ -1313,7 +2241,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === "/logout") {
-      return redirect(res, "/login", { "Set-Cookie": clearSessionCookie() });
+      return redirect(res, "/login", { "Set-Cookie": clearAuthCookies() });
     }
 
     const authorization = authorizeRequest(req, pathname);
@@ -1329,13 +2257,151 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-export { server };
+// --- PHASE 1 ADDITION: SOCKET.IO LOGIC ---
+const io = new SocketIOServer(server);
+
+io.on("connection", (socket) => {
+console.log("🟢 New client connected:", socket.id);
+
+
+
+
+// ==========================================
+// AI INTERVIEWER - GEMINI API INTEGRATION
+// ==========================================
+socket.on('ai-evaluate-code', async (data = {}) => {
+    // Bot Fix 1: Validate payload first
+    if (typeof data !== 'object' || typeof data.code !== 'string' || typeof data.language !== 'string' || typeof data.problem !== 'string') {
+        return socket.emit('ai-interviewer-feedback', { hint: 'Unable to analyze code right now.' });
+    }
+
+    console.log(`🤖 AI Interviewer analyzing code...`);
+    
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            socket.emit('ai-interviewer-feedback', { hint: "Backend Error: GEMINI_API_KEY is missing in .env!" });
+            return;
+        }
+
+        // The Real Gemini Prompt
+        const prompt = `You are an expert FAANG technical interviewer. A candidate is solving the "${data.problem}" problem in ${data.language}.
+        Here is their current code:
+        
+        ${data.code}
+        
+        Your task: Give a short, strategic hint (max 2-3 sentences) to guide them. 
+        CRITICAL RULES:
+        1. Do NOT give the exact code solution. 
+        2. Focus on time/space complexity, pointing out edge cases, or spotting logical flaws.
+        3. Keep the tone encouraging, professional, and directly address the logic in their code.`;
+
+        // Real API Call to Gemini
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.candidates && result.candidates.length > 0) {
+            let aiHint = result.candidates[0].content.parts[0].text;
+            aiHint = aiHint.replace(/\*/g, '').replace(/\`/g, ''); // Clean markdown
+            socket.emit('ai-interviewer-feedback', { hint: aiHint });
+        } else {
+            socket.emit('ai-interviewer-feedback', { hint: "Hmm, your logic is interesting... keep going!" });
+        }
+        
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        socket.emit('ai-interviewer-feedback', { hint: "My AI brain is taking a break. Keep coding!" });
+    }
+});
+
+// Draw events (whiteboard)
+socket.on('draw', (data) => {
+    // Broadcast to everyone else in the room
+    socket.to(data.roomId).emit('receive-draw', data);
+});
+
+// Clear board
+socket.on('clear-board', ({ roomId }) => {
+    socket.to(roomId).emit('receive-clear');
+});
+
+// Shared notes
+socket.on('share-notes', ({ roomId, text }) => {
+    socket.to(roomId).emit('receive-notes', text);
+});
+
+// Chat messages
+socket.on('chat-message', (data) => {
+    socket.to(data.roomId).emit('chat-message', data);
+});
+
+// ── VOICE CHAT (WebRTC signaling) ──
+
+socket.on('voice-join', ({ roomId, userId }) => {
+    socket.to(roomId).emit('voice-user-joined', { userId });
+});
+
+socket.on('voice-leave', ({ roomId, userId }) => {
+    socket.to(roomId).emit('voice-user-left', { userId });
+});
+
+// WebRTC offer
+socket.on('voice-offer', ({ roomId, offer, to, from }) => {
+    const targetSocketId = userSocketMap.get(to);
+    if (targetSocketId) io.to(targetSocketId).emit('voice-offer', { offer, from });
+});
+
+socket.on('voice-answer', ({ roomId, answer, to, from }) => {
+    const targetSocketId = userSocketMap.get(to);
+    if (targetSocketId) io.to(targetSocketId).emit('voice-answer', { answer, from });
+});
+
+socket.on('voice-ice', ({ roomId, candidate, to, from }) => {
+    const targetSocketId = userSocketMap.get(to);
+    if (targetSocketId) io.to(targetSocketId).emit('voice-ice', { candidate, from });
+});
+
+// ── END OF ADDITIONS ──
+
+
+  socket.on("join-room", (roomId, userId) => {
+      socket.join(roomId);
+      // Store user mapping
+    userSocketMap.set(userId, socket.id);
+    socket.userId = userId;
+    socket.roomId = roomId;
+     console.log(`👥 User ${userId} joined Room ${roomId}`);
+      
+      socket.to(roomId).emit("user-connected", userId);
+
+      socket.on("disconnect", () => {
+    if (socket.userId) {
+        userSocketMap.delete(socket.userId);
+        if (socket.roomId) {
+            socket.to(socket.roomId).emit("user-disconnected", socket.userId);
+        }
+    }
+});
+  });
+});
+// -----------------------------------------
+
+export { server, hashPassword, passwordMatches, applySM2, validateSignup, updateMemoryStore, readMemoryStore };
 if (process.env.VERCEL === "1") {
   db = initializeFirebase();
   useFirestore = !!db;
 }
 
-if (process.env.VERCEL !== "1") {
+
+
+if (process.env.VERCEL !== "1" && process.env.NODE_ENV !== "test") {
   loadEnvFile()
     .then(() => {
       db = initializeFirebase();
@@ -1347,9 +2413,23 @@ if (process.env.VERCEL !== "1") {
         const url = `http://${host}:${port}`;
         console.log(`Server running at ${url}`);
         if (!process.env.SESSION_SECRET) {
+          if (process.env.NODE_ENV === "production") {
+            console.error("FATAL: SESSION_SECRET is required in production mode.");
+            process.exit(1);
+          }
           console.warn(
             "Using a development SESSION_SECRET. Set SESSION_SECRET before deploying.",
           );
+        }
+      });
+
+      server.on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          console.error(`\n❌ Port ${port} is already in use.`);
+          console.error(`   Stop the existing server first, then run: npm run dev\n`);
+          process.exit(1);
+        } else {
+          throw err;
         }
       });
     })
