@@ -3624,9 +3624,14 @@ window.addEventListener('hashchange', () => {
       const className = element.className ? element.className.toString().toLowerCase() : '';
       if (id.includes('quiz') || className.includes('quiz') || id.includes('assistant')) {
         element.style.display = 'none';
-      } else if (element.classList.contains('hidden') && element.id !== 'loading-screen') {
+      if (id.includes('quiz') || className.includes('quiz') || id.includes('assistant')) {
+        element.dataset.routeHidden = 'true';
+        element.style.display = 'none';
+      } else if (element.dataset.routeHidden === 'true') {
+        delete element.dataset.routeHidden;
         element.classList.remove('hidden');
         element.style.display = '';
+      }
       }
     });
     if (typeof tQuiz !== 'undefined') tQuiz = null;
