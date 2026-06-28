@@ -863,12 +863,11 @@ async function handleApi(req, res, pathname) {
 if (pathname === "/api/session" && req.method === "GET") {
     const session = getSession(req);
     
-    // Agar user logged in nahi hai
+    
     if (!session) {
       return sendJson(res, 200, { authenticated: false, user: null });
     }
     
-    // Agar user logged in hai, toh asli details bhejo (No more Pavan)
     if (!session) {
       return sendJson(res, 200, { authenticated: false, user: null });
     }
