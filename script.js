@@ -4128,6 +4128,17 @@ window.submitRoadmapQuiz = submitRoadmapQuiz;
 window.openCodingProblem = openCodingProblem;
 window.openRoadmapStepModal = openRoadmapStepModal;
 
+// Gamification Modal Handlers (Fixes #1133)
+window.openGameModal = openGameModal;
+window.closeGameModal = closeGameModal;
+window.showGameTypeSelector = showGameTypeSelector;
+window.selectGameLevel = selectGameLevel;
+window.startGame = startGame;
+window.restartGame = restartGame;
+window.selectCodeAnswer = selectCodeAnswer;
+window.selectGameAnswer = selectGameAnswer;
+window.flipMemoryCard = flipMemoryCard;
+
 // ===== PROFILE =====
 function initProfile() {
 
