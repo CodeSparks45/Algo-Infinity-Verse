@@ -22,13 +22,40 @@ document.addEventListener("DOMContentLoaded", () => {
     return response.json();
   }
 
-  async function verifySession() {
+async function verifySession() {
     try {
       const response = await fetch("/api/session", { credentials: "include" });
-      const contentType = response.headers.get("content-type");
+      const data = await safeJsonParse(response);
       
-      if (response.ok && contentType && contentType.includes("application/json")) {
-        const data = await response.json();
+      if (response.ok) {
+        if (data.authenticated && data.user) {
+          isAuthenticated = true;
+          sessionNotice.className = "session-notice authenticated";
+          sessionNotice.textContent = "";
+          const icon = document.createElement("i");
+          icon.className = "fas fa-circle-check";
+          const strong = document.createElement("strong");
+          strong.textContent = data.user.name;
+          sessionNotice.append(
+            icon,
+            " Tracking memory for ",
+            strong,
+            ` (${data.user.email})`
+          );
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check user session:", err);
+      // Let the user know the session failed to load properly.
+      sessionNotice.className = "session-notice error";
+      sessionNotice.innerHTML = `<i class="fas fa-circle-exclamation"></i> Error loading session data: ${err.message}. Please refresh.`;
+      
+      dueList.innerHTML = `<p class="empty-state">Unable to load session. Please refresh the page.</p>`;
+      allList.innerHTML = `<p class="empty-state">Unable to load session. Please refresh the page.</p>`;
+      logBtn.disabled = true;
+      return; 
+    }
         if (data.authenticated && data.user) {
           isAuthenticated = true;
           sessionNotice.className = "session-notice authenticated";
