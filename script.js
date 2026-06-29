@@ -1864,64 +1864,85 @@ if (localStorage.getItem("algoInfinityVerse")) {
 }
 
 // ==========================================
-// SPACED REPETITION CORE ENGINE (PHASE 2)
+// SPACED REPETITION CORE ENGINE (SM-2 INTEGRATION)
 // ==========================================
 
-const REVISION_INTERVALS = [1, 3, 7, 14]; // Intervals in days
-
 /**
- * Calculates and schedules the next review date for a given DSA topic.
+ * Calculates and schedules the next review date for a given DSA topic using the SuperMemo-2 (SM-2) algorithm.
  * @param {string} topicId - The ID of the topic (e.g., 'arrays', 'strings', 'linkedlist')
+ * @param {number} quality - User's performance score from 0 to 5 (0 = blackout, 5 = perfect response)
  */
-function scheduleNextRevision(topicId) {
+function scheduleNextRevision(topicId, quality = 4) {
   // Guard clause to prevent errors if the schema isn't found
   if (!userProgress.revisionSchedule || !userProgress.revisionSchedule[topicId]) {
-    console.error(`Topic ID "${topicId}" was not found in the revision schedule schema.`);
+    console.error(`[SM-2] Topic ID "${topicId}" was not found in the revision schedule schema.`);
     return;
   }
 
   const now = new Date();
   const schedule = userProgress.revisionSchedule[topicId];
   
-  // // Look up how many days to add based on the user's current repetition tier
-// FIX: Clamp currentStage using Math.min to prevent out-of-bounds array index errors
-const maxIntervalIndex = REVISION_INTERVALS.length - 1;
-const safeStageIndex = Math.min(Math.max(0, schedule.currentStage), maxIntervalIndex);
+  // SM-2 Default Initialization if properties are missing
+  if (schedule.easeFactor === undefined) schedule.easeFactor = 2.5;
+  if (schedule.interval === undefined) schedule.interval = 0;
+  if (schedule.repetitions === undefined) schedule.repetitions = 0;
 
-const daysToAdd = REVISION_INTERVALS[safeStageIndex] || 1;
+  // Ensure quality is clamped between 0 and 5
+  quality = Math.max(0, Math.min(5, quality));
 
-// // Compute the exact calendar target date
-const nextDate = new Date();
-// Ensure 'now' or a fallback Date object is cleanly accessible for calculation math stability
-const referenceDate = (typeof now !== 'undefined' && now instanceof Date) ? now : new Date();
-nextDate.setDate(referenceDate.getDate() + daysToAdd);
+  // Core SM-2 Mathematical Algorithm
+  if (quality >= 3) {
+    // Correct response handling
+    if (schedule.repetitions === 0) {
+      schedule.interval = 1;
+    } else if (schedule.repetitions === 1) {
+      schedule.interval = 6;
+    } else {
+      schedule.interval = Math.round(schedule.interval * schedule.easeFactor);
+    }
+    schedule.repetitions += 1;
+  } else {
+    // Incorrect / Poor response handling (resets repetitions)
+    schedule.repetitions = 0;
+    schedule.interval = 1;
+  }
+
+  // Calculate new Ease Factor (EF)
+  schedule.easeFactor = schedule.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  
+  // SM-2 Rule: EF cannot drop below 1.3
+  if (schedule.easeFactor < 1.3) {
+    schedule.easeFactor = 1.3;
+  }
+
+  // Compute the exact calendar target date
+  const nextDate = new Date(now);
+  nextDate.setDate(nextDate.getDate() + schedule.interval);
 
   // Build a timestamped audit log for the review history requirement
   const logEntry = {
     reviewedAt: now.toISOString(),
-    stageCompleted: schedule.currentStage,
-    daysCalculated: daysToAdd,
+    quality: quality,
+    intervalApplied: schedule.interval,
+    easeFactor: parseFloat(schedule.easeFactor.toFixed(2)),
+    repetitions: schedule.repetitions,
     nextReviewDueDate: nextDate.toISOString()
   };
   
   // Mutate state updates
   schedule.nextReviewDate = nextDate.toISOString();
+  schedule.currentStage = schedule.repetitions; // Sync old UI variables just in case
   schedule.history.push(logEntry);
 
-  // Cycle to the next interval tier, capping at index 3 (14 days max)
-  if (schedule.currentStage < REVISION_INTERVALS.length - 1) {
-    schedule.currentStage++;
-  }
-
   // Centralized profile save path execution
-if (typeof saveUserData === "function") {
-  saveUserData();
-} else {
-  // Safe local browser fallback if execution context changes
-  localStorage.setItem("algoInfinityVerse", JSON.stringify(userProgress));
-}
+  if (typeof saveUserData === "function") {
+    saveUserData();
+  } else {
+    // Safe local browser fallback if execution context changes
+    localStorage.setItem("algoInfinityVerse", JSON.stringify(userProgress));
+  }
   
-  console.log(`[Scheduler] ${topicId} successfully scheduled. Next review in ${daysToAdd} days (${nextDate.toLocaleDateString()}).`);
+  console.log(`[SM-2] ${topicId} scheduled! Quality: ${quality}, Next Review in ${schedule.interval} days (${nextDate.toLocaleDateString()}), EF: ${schedule.easeFactor.toFixed(2)}`);
 }
 
 // ==========================================
@@ -1935,15 +1956,29 @@ if (typeof saveUserData === "function") {
 
 /**
  * Hook to execute whenever a user finishes a quiz successfully.
- * Call this inside your existing quiz completion logic handlers!
+ * Calls the SM-2 engine by calculating the quality of the response.
  */
 function handleQuizCompletionForRevision(topicId, scorePercentage) {
-  // If user passes with a safe margin (e.g., 70% or higher), advance their schedule
-  if (scorePercentage >= 70) {
-    scheduleNextRevision(topicId);
-    // Refresh the UI to reflect the immediate date changes
-    injectRevisionSchedulerUI(topicId);
-  }
+  // Map Quiz Percentage (0-100) to SM-2 Quality Score (0-5)
+  // 90-100% -> 5 (Perfect)
+  // 80-89%  -> 4 (Good)
+  // 70-79%  -> 3 (Passable)
+  // 50-69%  -> 2 (Difficult)
+  // 30-49%  -> 1 (Incorrect but remembered)
+  // 0-29%   -> 0 (Complete blackout)
+  
+  let quality = 0;
+  if (scorePercentage >= 90) quality = 5;
+  else if (scorePercentage >= 80) quality = 4;
+  else if (scorePercentage >= 70) quality = 3;
+  else if (scorePercentage >= 50) quality = 2;
+  else if (scorePercentage >= 30) quality = 1;
+
+  // Pass the mathematically calculated quality score into the SM-2 engine
+  scheduleNextRevision(topicId, quality);
+  
+  // Refresh the UI to reflect the immediate date changes
+  injectRevisionSchedulerUI(topicId);
 }
 
 // Automatically scan and run the UI injection on page load
