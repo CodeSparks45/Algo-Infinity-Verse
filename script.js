@@ -5636,6 +5636,14 @@ function clearQuizOutput() {
   const output = document.getElementById("quizOutputContent");
   output.innerHTML =
     '<p class="output-placeholder">Run your code to see output...</p>';
+}// Global reference to manage active workers
+let codeWorker = null;
+
+function clearQuizOutput() {
+  const output = document.getElementById("quizOutputContent");
+  if (output) {
+      output.innerHTML = '<p class="output-placeholder">Run your code to see output...</p>';
+  }
 }
 
 function runQuizCode() {
@@ -5645,23 +5653,57 @@ function runQuizCode() {
   const output = document.getElementById("quizOutputContent");
 
   if (!code.trim()) {
-    output.innerHTML =
-      '<p class="output-error">❌ Error: Please write some code first.</p>';
+    output.innerHTML = '<p class="output-error">❌ Error: Please write some code first.</p>';
     return;
   }
 
-  output.innerHTML = '<p class="output-running">⏳ Running code...</p>';
+  output.innerHTML = '<p class="output-running">⏳ Running code in secure sandbox...</p>';
 
-  // Simulate code execution
-  setTimeout(() => {
-    try {
-      const result = executeCode(code, lang);
-      output.innerHTML = `<pre class="output-success">✅ Output:\n${result}</pre>`;
-    } catch (e) {
-      output.innerHTML = `<pre class="output-error">❌ Error:\n${e.message}</pre>`;
-    }
-  }, 500);
+  // Terminate any previously running worker to prevent memory leaks or overlapping loops
+  if (codeWorker) {
+      codeWorker.terminate();
+  }
+
+  // Initialize a new Web Worker
+  codeWorker = new Worker('worker.js');
+
+  // Set a strict 2-second Time Limit
+  const timeoutId = setTimeout(() => {
+      if (codeWorker) {
+          codeWorker.terminate();
+          codeWorker = null;
+          output.innerHTML = '<pre class="output-error">❌ Time Limit Exceeded (TLE):\nYour code took too long to execute. Check for infinite loops!</pre>';
+      }
+  }, 2000);
+
+  // Handle successful execution or trapped code errors from the worker
+  codeWorker.onmessage = function(e) {
+      clearTimeout(timeoutId);
+      const response = e.data;
+      
+      if (response.success) {
+          output.innerHTML = `<pre class="output-success">✅ Output:\n${escapeHtml(response.output)}</pre>`;
+      } else {
+          output.innerHTML = `<pre class="output-error">❌ Error:\n${escapeHtml(response.error)}</pre>`;
+      }
+      
+      codeWorker.terminate();
+      codeWorker = null;
+  };
+
+  // Handle fatal worker-level errors
+  codeWorker.onerror = function(e) {
+      clearTimeout(timeoutId);
+      output.innerHTML = `<pre class="output-error">❌ Fatal Worker Error:\n${escapeHtml(e.message)}</pre>`;
+      codeWorker.terminate();
+      codeWorker = null;
+  };
+
+  // Dispatch the code payload to the worker
+  codeWorker.postMessage({ code: code, lang: lang });
 }
+
+
 
 function submitQuizCode() {
   const editor = document.getElementById("codeEditor");
