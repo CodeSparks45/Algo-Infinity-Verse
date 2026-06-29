@@ -17,6 +17,71 @@ document.addEventListener("DOMContentLoaded", () => {
       data = JSON.parse(localStorage.getItem("algoInfinityVerse")) || {};
     } catch (e) {
       data = {};
+  let isAuthenticated = false;
+
+  // CodeRabbit-proof: Safe JSON parser to gracefully handle HTML 404/500 errors
+  async function safeJsonParse(response) {
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text(); // Read as text to prevent JSON crash
+      throw new Error(`Server Error (${response.status}): Expected JSON but received HTML/Text.`);
+    }
+    return response.json();
+  }
+
+async function verifySession() {
+    try {
+      const response = await fetch("/api/session", { credentials: "include" });
+      const data = await safeJsonParse(response);
+      
+      if (response.ok) {
+        if (data.authenticated && data.user) {
+          isAuthenticated = true;
+          sessionNotice.className = "session-notice authenticated";
+          sessionNotice.textContent = "";
+          const icon = document.createElement("i");
+          icon.className = "fas fa-circle-check";
+          const strong = document.createElement("strong");
+          strong.textContent = data.user.name;
+          sessionNotice.append(
+            icon,
+            " Tracking memory for ",
+            strong,
+            ` (${data.user.email})`
+          );
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check user session:", err);
+      // Let the user know the session failed to load properly.
+      sessionNotice.className = "session-notice error";
+      sessionNotice.innerHTML = `<i class="fas fa-circle-exclamation"></i> Error loading session data: ${err.message}. Please refresh.`;
+      
+      dueList.innerHTML = `<p class="empty-state">Unable to load session. Please refresh the page.</p>`;
+      allList.innerHTML = `<p class="empty-state">Unable to load session. Please refresh the page.</p>`;
+      logBtn.disabled = true;
+      return; 
+    }
+        if (data.authenticated && data.user) {
+          isAuthenticated = true;
+          sessionNotice.className = "session-notice authenticated";
+          sessionNotice.textContent = "";
+          const icon = document.createElement("i");
+          icon.className = "fas fa-circle-check";
+          const strong = document.createElement("strong");
+          strong.textContent = data.user.name;
+          sessionNotice.append(
+            icon,
+            " Tracking memory for ",
+            strong,
+            ` (${data.user.email})`
+          );
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check user session:", err);
     }
     if (!data.memoryScanner) data.memoryScanner = {};
     return data;
@@ -72,11 +137,37 @@ document.addEventListener("DOMContentLoaded", () => {
       dueList.innerHTML = `<p class="empty-state">Nothing due right now. Log a session to start!</p>`;
       allList.innerHTML = `<p class="empty-state">No topics tracked yet. Log a practice session above to get started.</p>`;
       return;
+  async function loadDueTopics() {
+    if (!isAuthenticated) return;
+    try {
+      const response = await fetch("/api/memory/due", { credentials: "include" });
+      const data = await safeJsonParse(response);
+      
+      if (!response.ok) throw new Error(data.error || "Failed to load due topics.");
+
+      if (!data.due || data.due.length === 0) {
+        dueList.innerHTML = `<p class="empty-state">Nothing due right now. Great job staying on top of things!</p>`;
+        return;
+      }
+
+      dueList.innerHTML = data.due
+        .map((card) => renderTopicCard(card, { dueClass: "due" }))
+        .join("");
+    } catch (err) {
+      console.error(err);
+      dueList.innerHTML = `<p class="empty-state" style="color: #dc3545;">${err.message}</p>`;
     }
 
     const now = new Date();
     const dueCards = [];
     const allCardsHtml = [];
+  async function loadAllTopics() {
+    if (!isAuthenticated) return;
+    try {
+      const response = await fetch("/api/memory/all", { credentials: "include" });
+      const data = await safeJsonParse(response);
+      
+      if (!response.ok) throw new Error(data.error || "Failed to load topics.");
 
     cards.forEach(card => {
       const nextDate = new Date(card.nextReviewDate);
@@ -90,6 +181,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     dueList.innerHTML = dueCards.length > 0 ? dueCards.join("") : `<p class="empty-state">Nothing due right now. Great job staying on top of things!</p>`;
     allList.innerHTML = allCardsHtml.join("");
+      const now = new Date();
+      allList.innerHTML = data.cards
+        .map((card) => {
+          const isDue = new Date(card.nextReviewDate) <= now;
+          return renderTopicCard(card, { dueClass: isDue ? "due" : "upcoming" });
+        })
+        .join("");
+    } catch (err) {
+      console.error(err);
+      allList.innerHTML = `<p class="empty-state" style="color: #dc3545;">${err.message}</p>`;
+    }
   }
 
   logForm.addEventListener("submit", (e) => {
@@ -127,6 +229,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const card = memData[topicKey];
+      const result = await safeJsonParse(response);
+      if (!response.ok) throw new Error(result.error || "Failed to log session.");
 
       // SM-2 Math Calculation
       if (quality >= 3) {
