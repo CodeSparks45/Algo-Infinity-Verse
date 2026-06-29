@@ -4,8 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Algo Infinity Verse - Master DSA &amp; Crack Interviews</title>
+
+    <!-- SEO / Social metadata -->
+    <meta
+      name="description"
+      content="Algo Infinity Verse is an interactive DSA learning platform — master data structures and algorithms and crack technical interviews with hands-on visualizers, quizzes, and coding practice."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Algo Infinity Verse" />
+    <meta property="og:title" content="Algo Infinity Verse - Master DSA &amp; Crack Interviews" />
+    <meta
+      property="og:description"
+      content="Master DSA and crack interviews with interactive visualizers, quizzes, and coding practice."
+    />
+    <meta property="og:image" content="/images/banner.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Algo Infinity Verse - Master DSA &amp; Crack Interviews" />
+    <meta
+      name="twitter:description"
+      content="Master DSA and crack interviews with interactive visualizers, quizzes, and coding practice."
+    />
+    <meta name="twitter:image" content="/images/banner.png" />
+
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#38bdf8" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="/pages/learning/rust-learning.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&amp;family=Poppins:wght@300;400;500;600;700&amp;family=Fira+Code:wght@400;500;600&amp;display=swap"
       rel="stylesheet"
@@ -14,15 +41,45 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css"
-      integrity="sha512-W/zrbCncQnky/EzL+/AYwTtosvrM+YG/V6piQLSe2HuKS6cmbw89kjYkp3tWFn1dkWV7L1ruvJyKbLz73Vlgfg=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
-  </head>
+    <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js"
+      }
+    }
+    </script>
+  
+    <!-- Theme Initialization Script -->
+    <script>
+      (function() {
+        try {
+          var storedTheme = localStorage.getItem('theme');
+          var prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+          var theme = storedTheme || (prefersLight ? 'light' : 'dark');
+          if (theme === 'light') {
+            document.documentElement.classList.add('light-mode');
+          } else {
+            document.documentElement.classList.remove('light-mode');
+          }
+        } catch (e) {}
+      })();
+    </script>
+</head>
   <body data-page="index">
+    <!-- Skip to main content (accessibility) -->
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <!-- Offline Status Banner -->
+    <div id="offline-banner" class="offline-banner hidden" aria-live="polite">
+      <i class="fas fa-wifi-slash"></i> You are currently offline. Some features may be limited, but cached content is available.
+    </div>
+
+    <!-- PWA Storage Usage -->
+    <div id="pwa-storage-usage" style="position: fixed; bottom: 10px; left: 10px; background: rgba(16, 23, 42, 0.8); border: 1px solid var(--primary); padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; color: #cbd5e1; z-index: 9999; backdrop-filter: blur(5px);">
+      Checking storage...
+    </div>
+
     <!-- Loading Screen -->
     <div id="loading-screen">
       <div class="loader">
@@ -42,6 +99,8 @@
     <!-- Navigation Bar (loaded from partial) -->
     <div id="navbar-placeholder"></div>
 
+    <!-- Main content landmark -->
+    <main id="main" tabindex="-1">
     <!-- Hero Section -->
     <section id="home" class="hero">
       <div class="hero-background">
@@ -163,17 +222,89 @@
             </button>
           </div>
         </div>
-        <div class="problem-counter-container">
-          Showing <span id="visible-count">0</span> of
-          <span id="total-count">0</span> Problems
+        <div class="problem-counter-container" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            Showing <span id="visible-count">0</span> of
+            <span id="total-count">0</span> Problems
+          </div>
+          <button id="ai-recommend-btn" class="submit-btn" style="padding: 0.5rem 1rem; width: auto; font-size: 0.9rem;">
+            <i class="fas fa-magic"></i> AI Recommend Next
+          </button>
+          <p id="ai-recommend-status" class="sr-only" aria-live="polite"></p>
+        </div>
         </div>
         <div class="problems-grid">
           <!-- Problems will be generated by JavaScript -->
         </div>
+
+        <!-- Pagination Controls -->
+         <div class="pagination-controls" id="paginationControls">
+         <button class="pagination-btn" id="prevPageBtn" disabled>
+          <i class="fas fa-chevron-left"></i> Previous
+         </button>
+          <span class="pagination-info" id="paginationInfo">Page 1 of 1</span>
+          <button class="pagination-btn" id="nextPageBtn">
+           Next <i class="fas fa-chevron-right"></i>
+          </button>
+           </div>
       </div>
     </section>
+    <!-- DSA Flashcards Revision Section -->
+    <section id="flashcards" class="section flashcards-section">
+      <div class="container">
+        <h2 class="section-title">
+          <span class="title-icon">🗂️</span>
+          DSA Flashcards Revision
+        </h2>
+        <p class="section-subtitle">
+          Reveal answers, navigate cards, and persist your revision progress.
+        </p>
+
+        <div class="flashcards-controls" role="group" aria-label="Flashcard category filters">
+          <button class="filter-btn active" data-flashcards-category="arrays">Arrays</button>
+          <button class="filter-btn" data-flashcards-category="trees">Trees</button>
+          <button class="filter-btn" data-flashcards-category="graphs">Graphs</button>
+          <button class="filter-btn" data-flashcards-category="dp">DP</button>
+        </div>
+
+        <div class="flashcards-shell">
+          <div class="flashcards-header">
+            <div class="flashcards-meta">
+              <div class="flashcards-progress" id="flashcardsProgressText">Reviewed 0 / 0</div>
+              <div class="flashcards-total" id="flashcardsTotalText"></div>
+            </div>
+            <div class="flashcards-nav">
+              <button id="flashcardsPrevBtn" class="pagination-btn" disabled>
+                <i class="fas fa-chevron-left"></i> Prev
+              </button>
+              <button id="flashcardsNextBtn" class="pagination-btn">
+                Next <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flashcards-stage">
+            <div class="flashcard" id="flashcardRoot" aria-live="polite">
+              <div class="flashcard-inner">
+                <div class="flashcard-face flashcard-front" id="flashcardQuestion"></div>
+                <div class="flashcard-face flashcard-back" id="flashcardAnswer"></div>
+              </div>
+            </div>
+
+            <div class="flashcards-actions">
+              <button id="flashcardsRevealBtn" class="btn btn-primary">
+                <i class="fas fa-eye"></i> Reveal Answer
+              </button>
+              <div class="flashcards-small muted" id="flashcardsSmallHint"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Rust Playground Section -->
     <section id="rust-playground" class="section rust-playground-section">
+
       <div class="container">
         <div class="rust-hero">
           <h2 class="section-title">
@@ -247,10 +378,10 @@
         
         <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 2.5rem; flex-wrap: wrap;">
             <a href="/pages/learning/algorithm-universe/algorithm-universe.html" class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-project-diagram"></i> Interactive Universe Map
+                <i class="fas fa-project-diagram" aria-hidden="true"></i> Interactive Universe Map
             </a>
             <a href="/pages/tools/personalized-learning-path/personalized-learning-path.html" class="btn btn-secondary" style="display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-route"></i> Personalized Learning Path
+                <i class="fas fa-route" aria-hidden="true"></i> Personalized Learning Path
             </a>
         </div>
 
@@ -269,6 +400,9 @@
                 <li>Arrays & Strings</li>
                 <li>Recursion</li>
               </ul>
+              <a href="#" class="btn btn-primary roadmap-btn">
+                Explore Roadmap
+              </a>
             </div>
             <div class="stage" data-level="intermediate">
               <div class="stage-marker">
@@ -283,7 +417,7 @@
                 <li>Greedy Algorithms</li>
               </ul>
 
-              <a href="intermediate-roadmap.html" class="btn btn-primary">
+              <a href="#" class="btn btn-primary roadmap-btn">
                 Explore Roadmap
               </a>
             </div>
@@ -297,7 +431,29 @@
                 <li>Advanced Graphs</li>
                 <li>Competitive Programming</li>
               </ul>
+              <a href="#" class="btn btn-primary roadmap-btn">
+                Explore Roadmap
+              </a>
             </div>
+          </div>
+        </div>
+
+        <!-- Roadmap Controls -->
+        <div class="roadmap-controls" style="margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+          <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input
+              type="text"
+              id="roadmapSearchInput"
+              placeholder="Search algorithms, data structures, or topics..."
+            />
+            <button
+              id="clearRoadmapSearchBtn"
+              class="clear-search-btn"
+              aria-label="Clear search"
+            >
+              &times;
+            </button>
           </div>
         </div>
 
@@ -336,46 +492,80 @@
 
           <!-- Overall Stages Roadmap (Original) -->
           <div class="roadmap-content" id="overviewRoadmapContainer">
-            <div class="roadmap-container">
-              <div class="roadmap-progress">
-                <div class="progress-bar" id="roadmapProgress"></div>
-              </div>
-              <div class="roadmap-stages">
-                <div class="stage big-box" data-level="beginner">
-                  <div class="stage-marker">
-                    <i class="fas fa-seedling"></i>
-                  </div>
-                  <h3>Beginner</h3>
-                  <ul>
-                    <li>Basic Programming</li>
-                    <li>Arrays & Strings</li>
-                    <li>Recursion</li>
-                  </ul>
-                </div>
-                <div class="stage big-box" data-level="intermediate">
-                  <div class="stage-marker">
-                    <i class="fas fa-fire"></i>
-                  </div>
-                  <h3>Intermediate</h3>
-                  <ul>
-                    <li>Trees & Graphs</li>
-                    <li>Dynamic Programming</li>
-                    <li>Greedy Algorithms</li>
-                  </ul>
-                </div>
-                <div class="stage big-box" data-level="advanced">
-                  <div class="stage-marker">
-                    <i class="fas fa-crown"></i>
-                  </div>
-                  <h3>Advanced</h3>
-                  <ul>
-                    <li>System Design</li>
-                    <li>Advanced Graphs</li>
-                    <li>Competitive Programming</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+
+  <div class="overall-roadmap">
+
+    <div class="overall-stage">
+      <div class="stage-icon">🌱</div>
+      <h3>Beginner</h3>
+      <p>Build programming fundamentals and problem-solving skills.</p>
+
+      <div class="topic-list">
+        <span>Basic Programming</span>
+        <span>Arrays & Strings</span>
+        <span>Recursion</span>
+      </div>
+    </div>
+
+    <div class="road-arrow">
+    <i class="fas fa-arrow-down"></i>
+</div>
+
+    <div class="overall-stage">
+      <div class="stage-icon">⚡</div>
+      <h3>Intermediate</h3>
+      <p>Learn core data structures and optimization techniques.</p>
+
+      <div class="topic-list">
+        <span>Trees</span>
+        <span>Graphs</span>
+        <span>Dynamic Programming</span>
+      </div>
+    </div>
+
+    <div class="road-arrow">
+    <i class="fas fa-arrow-down"></i>
+</div>
+
+    <div class="overall-stage">
+      <div class="stage-icon">🚀</div>
+      <h3>Advanced</h3>
+      <p>Master advanced algorithms and competitive programming.</p>
+
+      <div class="topic-list">
+        <span>System Design</span>
+        <span>Advanced Graphs</span>
+        <span>Competitive Programming</span>
+      </div>
+    </div>
+
+    <div class="road-arrow">
+    <i class="fas fa-arrow-down"></i>
+</div>
+
+<div class="overall-stage">
+  <div class="stage-icon">👑</div>
+
+  <h3>DSA Pro</h3>
+
+  <p>
+    Achieve mastery in data structures and algorithms through
+    competitive programming, advanced optimization techniques,
+    and interview-level problem solving.
+  </p>
+
+  <div class="topic-list">
+    <span>Competitive Programming</span>
+    <span>Advanced Problem Solving</span>
+    <span>Interview Mastery</span>
+    <span>Optimization Techniques</span>
+  </div>
+
+</div>
+
+  </div>
+
+</div>
           </div>
         </div>
       </div>
@@ -433,7 +623,7 @@
               View your coding journey in a beautiful, structured resume layout
             </p>
             <a
-              href="resume.html"
+              href="/pages/career/resume/resume.html"
               class="card-btn"
               style="
                 text-decoration: none;
@@ -510,14 +700,37 @@
               </div>
               <div class="interview-card">
             <div class="card-icon">
-              <i class="fas fa-sword"></i>
+              <i class="fas fa-shield-halved"></i>
             </div>
             <h3>Algorithm Arena</h3>
             <p>Watch algorithms battle head-to-head with live visualizations and real-time performance metrics.</p>
-            <a href="algorithm-arena.html" class="card-btn" aria-label="Enter Algorithm Gladiator Arena"
+            <a href="/pages/tools/algorithm-arena/algorithm-arena.html" class="card-btn" aria-label="Enter Algorithm Gladiator Arena"
               style="text-decoration: none; display: inline-block; text-align: center;">
               Enter Arena
             </a>
+          </div>
+          <div class="interview-card">
+            <div class="card-icon">
+              <i class="fas fa-code-branch"></i>
+            </div>
+            <h3>Repository Analyzer</h3>
+            <p>Scan your GitHub repository for functional CI/CD automation and best practices.</p>
+            <a href="/pages/repo-analyzer/repo-analyzer.html" class="card-btn" aria-label="Open Repository Analyzer"
+              style="text-decoration: none; display: inline-block; text-align: center;">
+              Analyze Repo
+            </a>
+          </div>
+          <div class="interview-card">
+            <div class="card-icon">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <h3>Bulk Repository Analyzer</h3>
+            <p>Upload a CSV to analyze hundreds of GitHub workflows asynchronously using distributed background workers.</p>
+            <a href="/pages/repo-analyzer/bulk-analyzer.html" class="card-btn" aria-label="Open Bulk Analyzer"
+                style="text-decoration: none; display: inline-block; text-align: center;">
+                Bulk Audit
+            </a>
+          </div>
           </div>
         </div>
       </div>
@@ -592,7 +805,7 @@
               </div>
             </div>
             <a
-              href="resume.html"
+              href="/pages/career/resume/resume.html"
               class="btn btn-secondary"
               style="
                 width: 100%;
@@ -686,6 +899,29 @@
         </div>
       </div>
     </section>
+
+    
+    <!-- Did You Know? Section -->
+    <div class="dashboard-card facts-card">
+      <div class="facts-header">
+        <div class="facts-title">
+            <span class="facts-icon" aria-hidden="true">💡</span>
+            <h3>Did You Know?</h3>
+        </div>
+        <button onclick="showNextFact()" class="facts-btn">
+            Next Fact →
+        </button>
+    </div>
+    <div class="facts-content">
+        <p id="factText" class="fact-text" aria-live="polite" aria-atomic="true">
+            Loading fact...
+        </p>
+        <div class="facts-footer">
+            <span class="facts-date" id="factDate">📅 Fact of the day</span>
+            <span class="facts-counter" id="factCounter">1/15</span>
+        </div>
+    </div>
+</div>
 
     <!-- Gamification Section -->
     <section id="gamification" class="section gamification-section">
@@ -1069,19 +1305,68 @@
           <div class="quiz-problem-info">
             <span class="quiz-topic-badge" id="quizTopicBadge"></span>
             <span class="quiz-difficulty" id="quizDifficulty"></span>
+            <h3 id="quizTitle">Problem Title</h3>
+            <button type="button" class="quiz-modal-close" id="quizModalClose" aria-label="Close">&times;</button>
           </div>
-          <h3 id="quizTitle">Problem Title</h3>
-          <button class="modal-close" id="quizModalClose">&times;</button>
         </div>
         <div class="quiz-modal-body">
           <div class="quiz-layout">
             <div class="quiz-problem-panel">
-              <div class="problem-description">
-                <h4>Problem Description</h4>
-                <p id="quizDescription"></p>
-                <div class="problem-examples">
-                  <h5>Examples</h5>
-                  <div id="quizExamples"></div>
+              <!-- Tab Navigation -->
+              <div class="quiz-panel-tabs" style="display: flex; border-bottom: 1px solid var(--glass-border); margin-bottom: 1rem; gap: 0.5rem;">
+                <button id="btnQuizTabProblem" class="quiz-tab-btn active" onclick="switchQuizTab('problem')" type="button">Description</button>
+                <button id="btnQuizTabNotes" class="quiz-tab-btn" onclick="switchQuizTab('notes')" type="button">Notes & Mnemonics</button>
+              </div>
+
+              <!-- Problem Content Area -->
+              <div id="quizTabProblemContent">
+                <div class="problem-description">
+                  <h4>Problem Description</h4>
+                  <p id="quizDescription"></p>
+                  <div class="problem-examples">
+                    <h5>Examples</h5>
+                    <div id="quizExamples"></div>
+                  </div>
+                </div>
+                <div class="test-cases-section">
+                  <h5 class="test-cases-heading">Test Cases</h5>
+                  <div class="test-cases-container" id="quizTestCasesContainer"></div>
+                </div>
+              </div>
+
+              <!-- Notes & Mnemonics Content Area -->
+              <div id="quizTabNotesContent" style="display: none; padding-right: 0.5rem; max-height: 480px; overflow-y: auto;">
+                <h4 style="margin-top:0; font-family:'Orbitron',sans-serif; color:var(--accent);">Problem Study Guide</h4>
+                <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom: 1rem;">Attach study hooks, traps, and guidelines below. Notes are saved to your profile.</p>
+                
+                <div class="control-group" style="margin-bottom: 0.75rem;">
+                  <label for="noteText" style="display:block; font-size:0.8rem; margin-bottom:0.25rem;">My Notes</label>
+                  <textarea id="noteText" class="control-input" placeholder="General observations, explanations, or approach summaries..." style="height: 70px; resize: vertical; width: 100%; border-radius: 6px; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-primary); font-family: inherit; font-size: 0.9rem;"></textarea>
+                </div>
+                
+                <div class="control-group" style="margin-bottom: 0.75rem;">
+                  <label for="mnemonicText" style="display:block; font-size:0.8rem; margin-bottom:0.25rem;">Mnemonics / Memory Hooks</label>
+                  <textarea id="mnemonicText" class="control-input" placeholder="e.g. 'FAST/SLOW pointers: Slow moves 1, Fast moves 2'..." style="height: 60px; resize: vertical; width: 100%; border-radius: 6px; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-primary); font-family: inherit; font-size: 0.9rem;"></textarea>
+                </div>
+                
+                <div class="control-group" style="margin-bottom: 0.75rem;">
+                  <label for="pitfallsText" style="display:block; font-size:0.8rem; margin-bottom:0.25rem;">Common Pitfalls & Traps</label>
+                  <textarea id="pitfallsText" class="control-input" placeholder="What to watch out for (e.g. integer overflow, empty checks)..." style="height: 60px; resize: vertical; width: 100%; border-radius: 6px; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-primary); font-family: inherit; font-size: 0.9rem;"></textarea>
+                </div>
+                
+                <div class="control-group" style="margin-bottom: 0.75rem;">
+                  <label for="whenToUseText" style="display:block; font-size:0.8rem; margin-bottom:0.25rem;">When to use this Pattern?</label>
+                  <textarea id="whenToUseText" class="control-input" placeholder="Characteristics of problems that need this solution pattern..." style="height: 60px; resize: vertical; width: 100%; border-radius: 6px; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-primary); font-family: inherit; font-size: 0.9rem;"></textarea>
+                </div>
+
+                <div class="control-group" style="margin-bottom: 1rem;">
+                  <label for="noteTags" style="display:block; font-size:0.8rem; margin-bottom:0.25rem;">Tags (Comma-separated)</label>
+                  <input type="text" id="noteTags" class="control-input" placeholder="e.g. sliding-window, hash-map" style="width: 100%; border-radius: 6px; padding: 0.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-primary); font-family: inherit; font-size: 0.9rem;">
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 1rem;">
+                  <span id="noteSaveStatus" style="font-size:0.8rem; color:#10b981; font-style:italic;"></span>
+                  <button id="btnSaveProblemNotes" class="btn btn-primary" onclick="saveActiveProblemNotes()" type="button" style="padding: 0.4rem 0.8rem; font-size: 0.82rem;"><i class="fas fa-save"></i> Save Notes</button>
                 </div>
               </div>
             </div>
@@ -1104,27 +1389,26 @@
                       onclick="insertSnippet('function')"
                       title="Insert function"
                     >
-                      <i class="fas fa-code"></i> Function
+                      <i class="fas fa-code"></i><span class="btn-text"> Function</span>
                     </button>
                     <button
                       class="editor-btn"
                       onclick="formatCode()"
                       title="Format code"
                     >
-                      <i class="fas fa-indent"></i> Format
+                      <i class="fas fa-indent"></i><span class="btn-text"> Format</span>
                     </button>
+                    <button class="editor-btn" id="aiInterviewerToggle" type="button" onclick="toggleAiInterviewer()" title="Invite AI Interviewer" aria-pressed="false" style="color: #10b981; border: 1px solid #10b981;">
+                     <i class="fas fa-user-tie"></i><span class="btn-text"> AI Interviewer</span>
+                    </button>
+                  
                     <button
                       class="editor-btn"
                       onclick="toggleLineComment()"
                       title="Toggle comment"
                     >
-                      <i class="fas fa-comment"></i> //
+                      <i class="fas fa-comment"></i><span class="btn-text"> //</span>
                     </button>
-                  </div>
-                </div>
-                <div class="editor-tabs">
-                  <div class="editor-tab active" data-tab="code">
-                    <i class="fas fa-code"></i> Code
                   </div>
                 </div>
                 <div class="code-editor">
@@ -1132,13 +1416,15 @@
                   <textarea
                     id="codeEditor"
                     class="code-textarea"
+                    spellcheck="false"
                     placeholder="// Write your solution here...&#10;&#10;function twoSum(nums, target) {&#10;    // Your code here&#10;}"
                   ></textarea>
                   <div class="syntax-highlight" id="syntaxHighlight"></div>
+                  <div class="current-line-indicator" id="currentLineIndicator"></div>
                 </div>
                 <div class="editor-shortcuts">
-                  <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> Run Code</span>
-                  <span><kbd>Ctrl</kbd>+<kbd>S</kbd> Submit</span>
+                  <span aria-label="Run Code shortcut: Control plus Enter"><kbd>Ctrl</kbd>+<kbd>Enter</kbd><span class="shortcut-label"> Run Code</span></span>
+                  <span aria-label="Submit shortcut: Control plus S"><kbd>Ctrl</kbd>+<kbd>S</kbd><span class="shortcut-label"> Submit</span></span>
                 </div>
                 <div class="output-panel" id="outputPanel">
                   <div class="output-header" onclick="toggleOutputPanel()">
@@ -1150,25 +1436,27 @@
                       Run your code to see output...
                     </p>
                   </div>
-                  <div
-                    class="test-cases-container"
-                    id="quizTestCasesContainer"
-                  ></div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="quiz-modal-footer">
-            <div class="quiz-actions">
-              <button class="btn btn-secondary" onclick="closeQuizEditor()">
-                Close
-              </button>
+        </div>
+        <div class="quiz-modal-footer">
+          <div class="quiz-actions" style="display:flex; justify-content:space-between; align-items:center; width:100%; gap: 1rem; flex-wrap: wrap;">
+            <div style="display:flex; gap:0.5rem;">
               <button class="btn btn-outline" onclick="runQuizCode()">
                 <i class="fas fa-play"></i> Run
               </button>
               <button class="btn btn-primary" onclick="submitQuizCode()">
                 <i class="fas fa-paper-plane"></i> Submit
               </button>
+            </div>
+            
+            <div id="sm2RatingContainer" style="display:none; align-items:center; gap:0.6rem; background:rgba(255,255,255,0.03); padding:0.4rem 0.8rem; border-radius:8px; border:1px solid var(--glass-border);">
+              <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:600; font-family:'Orbitron',sans-serif;">SM-2 Schedule:</span>
+              <button class="btn" style="background:rgba(239, 68, 68, 0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); padding:0.25rem 0.5rem; font-size:0.75rem; font-family:'Orbitron',sans-serif; cursor:pointer;" onclick="rateRecallDifficulty(1)" type="button">Again</button>
+              <button class="btn" style="background:rgba(245, 158, 11, 0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); padding:0.25rem 0.5rem; font-size:0.75rem; font-family:'Orbitron',sans-serif; cursor:pointer;" onclick="rateRecallDifficulty(3)" type="button">Good</button>
+              <button class="btn" style="background:rgba(16, 185, 129, 0.2); color:#10b981; border:1px solid rgba(16,185,129,0.4); padding:0.25rem 0.5rem; font-size:0.75rem; font-family:'Orbitron',sans-serif; cursor:pointer;" onclick="rateRecallDifficulty(5)" type="button">Easy</button>
             </div>
           </div>
         </div>
@@ -1266,6 +1554,26 @@
                 maxlength="20"
               />
             </div>
+            <div class="languages-selector" style="margin-top: 1.5rem;">
+              <h4 style="margin-bottom: 0.5rem;">Programming Languages Known</h4>
+              <div class="languages-edit-options" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <label class="lang-edit-label" style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--text-light);">
+                  <input type="checkbox" class="lang-edit-checkbox" value="C++" /> C++
+                </label>
+                <label class="lang-edit-label" style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--text-light);">
+                  <input type="checkbox" class="lang-edit-checkbox" value="Java" /> Java
+                </label>
+                <label class="lang-edit-label" style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--text-light);">
+                  <input type="checkbox" class="lang-edit-checkbox" value="Python" /> Python
+                </label>
+                <label class="lang-edit-label" style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--text-light);">
+                  <input type="checkbox" class="lang-edit-checkbox" value="JavaScript" /> JavaScript
+                </label>
+                <label class="lang-edit-label" style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; color: var(--text-light);">
+                  <input type="checkbox" class="lang-edit-checkbox" value="Rust" /> Rust
+                </label>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -1362,6 +1670,16 @@
 </div>
             </div>
           </div>
+          
+          <!-- Languages Section -->
+          <div class="profile-languages big-box" style="margin-top: 1.5rem; padding: 1.5rem; text-align: left; border-radius: var(--border-radius); border: 1px solid var(--glass-border); background: var(--dark-card);">
+            <h4 style="margin: 0 0 1rem 0; font-family: 'Orbitron', sans-serif; font-size: 1.1rem; color: var(--text-light); display: flex; align-items: center; gap: 0.5rem;">
+              <span>💻</span> Known Languages
+            </h4>
+            <div id="profileLanguagesSection" class="languages-list" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <!-- Dynamic chips -->
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1409,8 +1727,10 @@
 
     <div class="modal" id="changePasswordModal">
   <div class="modal-content">
+
     <div class="modal-header">
       <h3>Change Password</h3>
+
       <button
         class="modal-close"
         id="changePasswordClose"
@@ -1423,37 +1743,103 @@
     <div class="modal-body">
       <div class="profile-edit-form">
 
-        <label for="currentPassword">
-          Current Password
-        </label>
+        <div
+          id="changePasswordMessage"
+          class="password-message"
+          role="alert"
+        ></div>
 
-        <input
-          type="password"
-          id="currentPassword"
-          placeholder="Enter current password"
-        />
+        <!-- Current Password -->
+        <div class="password-field">
+          <label for="currentPassword">Current Password</label>
 
-        <label for="newPassword">
-          New Password
-        </label>
+          <div class="password-input-wrapper">
+            <input
+              type="password"
+              id="currentPassword"
+              placeholder="Enter current password"
+            />
 
-        <input
-          type="password"
-          id="newPassword"
-          placeholder="Enter new password"
-        />
+            <button
+              type="button"
+              class="password-toggle"
+              data-target="currentPassword"
+            >
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
 
-        <label for="confirmNewPassword">
-          Confirm New Password
-        </label>
+        <!-- New Password -->
+        <div class="password-field">
+          <label for="newPassword">New Password</label>
 
-        <input
-          type="password"
-          id="confirmNewPassword"
-          placeholder="Confirm new password"
-        />
+          <div class="password-input-wrapper">
+            <input
+              type="password"
+              id="newPassword"
+              placeholder="Create a strong password"
+            />
 
-        <p id="changePasswordMessage"></p>
+            <button
+              type="button"
+              class="password-toggle"
+              data-target="newPassword"
+            >
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+
+          <div class="password-strength">
+            <div
+              id="passwordStrengthBar"
+              class="strength-bar"
+            ></div>
+          </div>
+
+          <span
+            id="passwordStrengthText"
+            class="strength-text"
+          >
+            Password strength
+          </span>
+
+          <ul class="password-rules">
+            <li id="ruleLength">Minimum 8 characters</li>
+            <li id="ruleUpper">One uppercase letter</li>
+            <li id="ruleLower">One lowercase letter</li>
+            <li id="ruleNumber">One number</li>
+            <li id="ruleSpecial">One special character</li>
+          </ul>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="password-field">
+          <label for="confirmNewPassword">
+            Confirm New Password
+          </label>
+
+          <div class="password-input-wrapper">
+            <input
+              type="password"
+              id="confirmNewPassword"
+              placeholder="Confirm new password"
+            />
+
+            <button
+              type="button"
+              class="password-toggle"
+              data-target="confirmNewPassword"
+            >
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+
+          <small
+            id="confirmPasswordError"
+            class="field-error"
+          ></small>
+        </div>
 
       </div>
     </div>
@@ -1473,8 +1859,19 @@
         Change Password
       </button>
     </div>
+
   </div>
 </div>
+<section id="study-timer" class="glass-card" style="margin: 20px auto; padding: 20px; text-align: center; max-width: 600px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+    <h3 style="margin-bottom: 15px; color: var(--text-primary);">Focus Mode</h3>
+    <div class="timer-display" id="timer-display" role="timer" aria-live="polite" aria-atomic="true" aria-label="Focus session time remaining" style="font-size: 2.5rem; font-weight: bold; margin-bottom: 15px;">25:00</div>
+    <div class="timer-controls" style="display: flex; gap: 10px; justify-content: center;">
+        <button id="start-btn" class="btn btn-primary">Start</button>
+        <button id="pause-btn" class="btn btn-secondary">Pause</button>
+        <button id="reset-btn" class="btn btn-secondary">Reset</button>
+    </div>
+</section>
+    </main>
 
     <!-- Footer -->
     <div id="footer-placeholder"></div>
@@ -1513,14 +1910,14 @@
         </div>
         <div class="auth-gate-actions">
           <a
-            href="/login"
+            href="login.html"
             id="authGateLoginBtn"
             class="btn btn-primary auth-gate-btn"
           >
             <i class="fas fa-sign-in-alt"></i> Login
           </a>
           <a
-            href="/signup"
+            href="signup.html"
             id="authGateSignupBtn"
             class="btn btn-secondary auth-gate-btn"
           >
@@ -1536,10 +1933,18 @@
     </div>
 
     <script src="/pages/learning/rust-learning.js"></script>
-    <script src="auth.js"></script>
-    <script src="script.js?v=20260601"></script>
+    <script type="module" src="./modules/firebase-client.js"></script>
+<script src="interceptors.js"></script>
+<script src="auth.js"></script>
+<script src="utils/virtualList.js"></script>
+<script src="utils/navigationManager.js"></script>
+    <script src="timer.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="utils/searchEngine.js"></script>
+    <script src="script.js"></script>
     <script src="theme.js"></script>
     <script src="auth-gate.js"></script>
+    <script src="/scripts/lazy-load.js" defer></script>
 
     <script>
       loadPartial("navbar-placeholder", "/partials/navbar.html").then(() => {
@@ -1547,5 +1952,27 @@
       });
       loadPartial("footer-placeholder", "/partials/footer.html");
     </script>
+    <!-- Keyboard Shortcut Modal -->
+<div id="shortcutModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999;">
+    <div style="background:white; padding:30px; border-radius:12px; max-width:400px; width:90%;">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <div style="margin:15px 0;">
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>Search</span><kbd>Ctrl+K</kbd></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>Home</span><kbd>Alt+H</kbd></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>Topics</span><kbd>Alt+T</kbd></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>Practice</span><kbd>Alt+P</kbd></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>Quiz</span><kbd>Alt+Q</kbd></div>
+            <div style="display:flex; justify-content:space-between; padding:6px 0;"><span>Dashboard</span><kbd>Alt+D</kbd></div>
+        </div>
+        <button onclick="closeShortcutModal()" style="padding:8px 20px; background:#7c3aed; color:white; border:none; border-radius:6px; cursor:pointer;">Close</button>
+    </div>
+</div>
+
+<!-- Footer Shortcut Trigger -->
+<footer>
+    <button onclick="openShortcutModal()" style="background:none; border:none; color:#6b7280; cursor:pointer; text-decoration:underline;">
+        ⌨️ Keyboard Shortcuts
+    </button>
+</footer>
   </body>
 </html>
