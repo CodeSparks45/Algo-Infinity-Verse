@@ -1685,6 +1685,43 @@ followUp: "Can you solve it using recursion, memoization, and bottom-up tabulati
     ],
     followUp: "Can you optimize the space complexity from O(m*n) to O(min(m,n))?",
   },
+  { id: 1, title: "Two Sum", difficulty: "easy", tags: ["Arrays", "Hash Table"], acceptance: "48.2%", category: "arrays", description: "Given an array of integers nums and an integer target, return indices of the two numbers that add up to target.", constraints: ["2 ≤ nums.length ≤ 10⁴", "-10⁹ ≤ nums[i] ≤ 10⁹", "Only one valid answer exists"], followUp: "Can you solve it in O(n) time complexity?", functionName: "twoSum", params: ["nums", "target"], testCases: [{ input: [[2,7,11,15], 9], expected: [0,1] }, { input: [[3,2,4], 6], expected: [1,2] }, { input: [[3,3], 6], expected: [0,1] }] },
+  { id: 2, title: "Valid Parentheses", difficulty: "easy", tags: ["Strings", "Stack"], acceptance: "40.2%", category: "strings", description: "Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.", constraints: ["1 ≤ s.length ≤ 10⁴", "s consists of parentheses only '()[]{}'"], followUp: "Can you solve it in O(n) time and O(n) space?", functionName: "isValid", params: ["brackets"], guide: "brackets: string of '()', '{}', '[]' characters\nreturns: true if every opening bracket has a matching closing bracket in the correct order, false otherwise", testCases: [{ input: ["()"], expected: true }, { input: ["()[]{}"], expected: true }, { input: ["(]"], expected: false }, { input: ["([)]"], expected: false }, { input: ["{[]}"], expected: true }] },
+  { id: 3, title: "Merge Two Sorted Lists", difficulty: "easy", tags: ["Linked List", "Recursion"], acceptance: "58.5%", category: "linkedlist", description: "Given two sorted arrays list1 and list2, merge them into one sorted array.", constraints: ["0 ≤ list1.length, list2.length ≤ 50", "-100 ≤ list1[i], list2[i] ≤ 100"], followUp: "Can you solve it iteratively using O(1) extra space, and also recursively?", functionName: "mergeLists", params: ["list1", "list2"], guide: "list1: first sorted array of integers\nlist2: second sorted array of integers\nreturns: a new sorted array containing all elements from both lists in ascending order", testCases: [{ input: [[1,2,4], [1,3,4]], expected: [1,1,2,3,4,4] }, { input: [[], []], expected: [] }, { input: [[], [0]], expected: [0] }] },
+  { id: 4, title: "Maximum Subarray", difficulty: "medium", tags: ["Arrays", "Divide & Conquer"], acceptance: "46.2%", category: "arrays", description: "Given an integer array nums, find the contiguous subarray (containing at least one number) which has the largest sum.", constraints: ["1 ≤ nums.length ≤ 10⁵", "-10⁴ ≤ nums[i] ≤ 10⁴"], followUp: "Can you solve it in O(n) time using Kadane's Algorithm?", functionName: "maxSubArray", params: ["nums"], testCases: [{ input: [[-2,1,-3,4,-1,2,1,-5,4]], expected: 6 }, { input: [[1]], expected: 1 }, { input: [[5,4,-1,7,8]], expected: 23 }, { input: [[-1]], expected: -1 }] },
+  { id: 5, title: "LRU Cache", difficulty: "medium", tags: ["Design", "Hash Table"], acceptance: "37.5%", category: "arrays", description: "Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.", constraints: ["1 ≤ capacity ≤ 3000", "0 ≤ key, value ≤ 10⁴", "At most 2 × 10⁵ calls"], followUp: "Can you implement both get and put in O(1) time complexity?", functionName: "LRUCache", params: ["capacity"], testCases: [{ input: [2], methods: [["put", 1, 1], ["put", 2, 2], ["get", 1]], expected: 1 }, { input: [2], methods: [["put", 1, 1], ["put", 2, 2], ["get", 2]], expected: 2 }, { input: [2], methods: [["put", 1, 1], ["put", 2, 2], ["put", 3, 3], ["get", 1]], expected: -1 }, { input: [2], methods: [["put", 2, 1], ["put", 2, 2], ["get", 2]], expected: 2 }] },
+  { id: 6, title: "Clone Graph", difficulty: "medium", tags: ["Graphs", "DFS", "BFS"], acceptance: "43.2%", category: "graphs", description: "Given an adjacency list representing a connected undirected graph, return a deep copy (clone) of the graph as an adjacency list.", constraints: ["0 ≤ adjList.length ≤ 100", "1 ≤ adjList[i][j] ≤ 100", "Each node's value is 1-indexed (node i+1 corresponds to adjList[i])"], followUp: "Can you solve it using both BFS and DFS approaches?", functionName: "cloneGraph", params: ["adjList"], guide: "adjList: 2D array where adjList[i] lists the neighbors of node i+1 (1-indexed)\nreturns: a deep copy of the adjacency list representing the cloned graph", testCases: [ { input: [[[2,4],[1,3],[2,4],[1,3]]], expected: [[2,4],[1,3],[2,4],[1,3]] }, { input: [[[]]], expected: [[]] }, { input: [[]], expected: [] } ] },
+  { id: 7, title: "Longest Increasing Subsequence", difficulty: "hard", tags: ["DP", "Binary Search"], acceptance: "42.1%", category: "dp", description: "Given an integer array nums, return the length of the longest strictly increasing subsequence.", constraints: ["1 ≤ nums.length ≤ 2500", "-10⁴ ≤ nums[i] ≤ 10⁴"], followUp: "Can you improve from O(n²) DP to O(n log n) using binary search?", functionName: "lengthOfLIS", params: ["nums"], guide: "nums: array of integers\nreturns: length of the longest strictly increasing subsequence", testCases: [{ input: [[10,9,2,5,3,7,101,18]], expected: 4 }, { input: [[0,1,0,3,2,3]], expected: 4 }, { input: [[7,7,7,7,7,7,7]], expected: 1 }] },
+  { id: 8, title: "Word Ladder", difficulty: "hard", tags: ["Graphs", "BFS"], acceptance: "31.4%", category: "graphs", description: "Given two words, beginWord and endWord, and a dictionary wordList, return the number of words in the shortest transformation sequence.", constraints: ["1 ≤ beginWord.length ≤ 10", "endWord.length == beginWord.length", "1 ≤ wordList.length ≤ 5000"], followUp: "Can you find ALL shortest transformation sequences?", functionName: "ladderLength", params: ["beginWord", "endWord", "wordList"], testCases: [{ input: ["hit", "cog", ["hot","dot","dog","lot","log","cog"]], expected: 5 }, { input: ["hit", "cog", ["hot","dot","dog","lot","log"]], expected: 0 }] },
+  { id: 9, title: "Trapping Rain Water", difficulty: "hard", tags: ["Arrays", "Two Pointers"], acceptance: "48.7%", category: "arrays", description: "Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.", constraints: ["1 ≤ height.length ≤ 2 × 10⁴", "0 ≤ height[i] ≤ 10⁵"], followUp: "Can you solve it in O(n) time and O(1) space using the two-pointer technique?", functionName: "trap", params: ["height"], guide: "height: array of non-negative integers representing bar heights in the elevation map\nreturns: total units of rainwater that can be trapped between the bars\n\nHint: Use two pointers (left at 0, right at end). Track maxLeft and maxRight. At each step, process the shorter side: if height[left] < height[right], water += max(0, maxLeft - height[left]), else water += max(0, maxRight - height[right]).", testCases: [{ input: [[0,1,0,2,1,0,1,3,2,1,2,1]], expected: 6 }, { input: [[4,2,0,3,2,5]], expected: 9 }] },
+  { id: 10, title: "Reverse Linked List", difficulty: "easy", tags: ["Linked List"], acceptance: "72.1%", category: "linkedlist", description: "Given an array representing a linked list, reverse it and return the reversed array.", constraints: ["0 ≤ arr.length ≤ 5000", "-5000 ≤ arr[i] ≤ 5000"], followUp: "Can you solve it both iteratively and recursively?", functionName: "reverseList", params: ["head"], guide: "head: array of integers representing the linked list values\nreturns: reversed array with elements in opposite order\n\nHint: Use two pointers (prev starts empty, curr starts at head). Iterate through, reversing each element's position.", testCases: [{ input: [[1,2,3,4,5]], expected: [5,4,3,2,1] }, { input: [[1,2]], expected: [2,1] }, { input: [[]], expected: [] }] },
+  { id: 11, title: "Invert Binary Tree", difficulty: "easy", tags: ["Trees", "DFS"], acceptance: "68.5%", category: "trees", description: "Given a binary tree represented as a level-order array, invert it and return the inverted level-order array.", constraints: ["0 ≤ arr.length ≤ 100", "-100 ≤ arr[i] ≤ 100"], followUp: "Can you solve it both recursively and iteratively using a queue or stack?", functionName: "invertTree", params: ["root"], guide: "root: level-order array of integers representing the binary tree (null for missing nodes)\nreturns: level-order array of the inverted binary tree (swapped left/right children)\n\nHint: Recursively swap left and right children at each node. Base case: when root is null or empty.", testCases: [{ input: [[4,2,7,1,3,6,9]], expected: [4,7,2,9,6,3,1] }, { input: [[2,1,3]], expected: [2,3,1] }, { input: [[]], expected: [] }] },
+  { id: 12, title: "Validate BST", difficulty: "medium", tags: ["Trees", "Recursion"], acceptance: "28.4%", category: "trees", description: "Given a binary tree represented as a level-order array (null for missing children), determine if it is a valid BST.", constraints: ["1 ≤ arr.length ≤ 10⁴", "-2³¹ ≤ arr[i] ≤ 2³¹ - 1"], followUp: "Can you solve it without recursion?", functionName: "isValidBST", params: ["root"], testCases: [{ input: [[2,1,3]], expected: true }, { input: [[5,1,4,null,null,3,6]], expected: false }] },
+  { id: 13, title: "Number of Islands", difficulty: "medium", tags: ["Graphs", "DFS"], acceptance: "54.8%", category: "graphs", description: "Given an m x n 2D binary grid which represents a map of '1's (land) and '0's (water), return the number of islands.", constraints: ["1 ≤ m, n ≤ 300", "grid[i][j] is '0' or '1'"], followUp: "Can you solve it using both DFS and Union-Find?", functionName: "numIslands", params: ["grid"], testCases: [{ input: [[["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]], expected: 1 }, { input: [[["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]]], expected: 3 }, { input: [[["0"]]], expected: 0 }] },
+  { id: 14, title: "House Robber", difficulty: "medium", tags: ["DP", "Arrays"], acceptance: "42.3%", category: "dp", description: "You are a professional robber planning to rob houses along a street. Return the maximum amount of money you can rob without robbing two adjacent houses.", constraints: ["1 ≤ nums.length ≤ 100", "0 ≤ nums[i] ≤ 400"], followUp: "What if the houses are arranged in a circle?", functionName: "rob", params: ["nums"], guide: "nums: array of non-negative integers representing money in each house\nreturns: maximum amount that can be robbed tonight without alerting the police\n\nHint: Use dynamic programming. At each house i, decide to rob it (add nums[i] to dp[i-2]) or skip it (keep dp[i-1]). The optimal is max(rob, skip).", testCases: [{ input: [[1,2,3,1]], expected: 4 }, { input: [[2,7,9,3,1]], expected: 12 }, { input: [[2,1,1,2]], expected: 4 }] },
+  { id: 15, title: "Course Schedule", difficulty: "medium", tags: ["Graphs", "Topological Sort"], acceptance: "44.7%", category: "graphs", description: "There are numCourses courses. Given prerequisites, return true if you can finish all courses.", constraints: ["1 ≤ numCourses ≤ 2000", "0 ≤ prerequisites.length ≤ 5000", "prerequisites[i].length == 2"], followUp: "Can you return the actual valid course order?", functionName: "canFinish", params: ["numCourses", "prerequisites"], testCases: [{ input: [2, [[1,0]]], expected: true }, { input: [2, [[1,0],[0,1]]], expected: false }] },
+  { id: 16, title: "Best Time to Buy and Sell Stock", difficulty: "easy", tags: ["Arrays", "Greedy"], acceptance: "54.3%", category: "arrays", description: "Given an array prices where prices[i] is the price of a given stock on the iᵗʰ day, return the maximum profit.", constraints: ["1 ≤ prices.length ≤ 10⁵", "0 ≤ prices[i] ≤ 10⁴"], followUp: "Can you solve it in O(n) time and O(1) space?", functionName: "maxProfit", params: ["prices"], testCases: [{ input: [[7,1,5,3,6,4]], expected: 5 }, { input: [[7,6,4,3,1]], expected: 0 }, { input: [[2,4,1]], expected: 2 }] },
+  { id: 17, title: "Move Zeroes", difficulty: "easy", tags: ["Arrays", "Two Pointers"], acceptance: "60.1%", category: "arrays", description: "Given an integer array nums, move all 0s to the end of it while maintaining the relative order of the non-zero elements.", constraints: ["1 ≤ nums.length ≤ 10⁴", "−2³¹ ≤ nums[i] ≤ 2³¹ − 1"], followUp: "Can you minimize the total number of operations?", functionName: "moveZeroes", params: ["nums"], guide: "nums: integer array to move zeroes in-place\nreturns: array with all zeroes moved to the end while preserving relative order of non-zero elements\n\nHint: Use two-pointer technique. One pointer (nonZeroIndex) tracks where the next non-zero should go. Iterate through the array, moving non-zero elements forward, then fill remaining positions with zero.", testCases: [{ input: [[0,1,0,3,12]], expected: [1,3,12,0,0] }, { input: [[0]], expected: [0] }, { input: [[1,0]], expected: [1,0] }] },
+  { id: 18, title: "Valid Anagram", difficulty: "easy", tags: ["Strings", "Hash Table"], acceptance: "63.4%", category: "strings", description: "Given two strings s and t, return true if t is an anagram of s.", constraints: ["1 ≤ s.length, t.length ≤ 5 × 10⁴", "s and t consist of lowercase English letters only"], followUp: "What if the inputs contain Unicode characters?", functionName: "isAnagram", params: ["string1", "string2"], guide: "string1: first input string\nstring2: second input string\nreturns: true if string2 is an anagram of string1 (same characters, different order), false otherwise\n\nHint: Use a frequency counter array of size 26 for lowercase English letters. Count occurrences of each character in s (+1) and t (-1). If all counts are zero at the end, it is a valid anagram.", testCases: [{ input: ["anagram", "nagaram"], expected: true }, { input: ["rat", "car"], expected: false }, { input: ["a", "a"], expected: true }] },
+  { id: 19, title: "Single Number", difficulty: "easy", tags: ["Arrays", "Bit Manipulation"], acceptance: "70.2%", category: "arrays", description: "Given a non-empty array of integers nums, every element appears twice except for one. Find that single one.", constraints: ["1 ≤ nums.length ≤ 3 × 10⁴", "-3 × 10⁴ ≤ nums[i] ≤ 3 × 10⁴"], followUp: "Can you solve it using XOR bit manipulation?", functionName: "singleNumber", params: ["nums"], testCases: [{ input: [[2,2,1]], expected: 1 }, { input: [[4,1,2,1,2]], expected: 4 }, { input: [[1]], expected: 1 }] },
+  { id: 20, title: "Intersection of Two Arrays", difficulty: "easy", tags: ["Arrays", "Hash Set"], acceptance: "72.8%", category: "arrays", description: "Given two integer arrays nums1 and nums2, return an array of their intersection (sorted, unique).", constraints: ["1 ≤ nums1.length, nums2.length ≤ 1000", "0 ≤ nums1[i], nums2[i] ≤ 1000"], followUp: "What if the arrays are already sorted?", functionName: "intersection", params: ["nums1", "nums2"], testCases: [{ input: [[1,2,2,1], [2,2]], expected: [2] }, { input: [[4,9,5], [9,4,9,8,4]], expected: [4,9] }] },
+  { id: 21, title: "Check If Array Is Sorted", difficulty: "easy", tags: ["Arrays"], acceptance: "78.5%", category: "arrays", description: "Given an array of integers nums, return true if it is sorted in non-decreasing order.", constraints: ["1 ≤ nums.length ≤ 10⁴", "−10⁹ ≤ nums[i] ≤ 10⁹"], followUp: "Can you solve it in O(n) time complexity and O(1) space?", functionName: "isSorted", params: ["nums"], testCases: [{ input: [[1,2,3,4]], expected: true }, { input: [[5,4,3,2,1]], expected: false }, { input: [[1,1,2,2,3]], expected: true }] },
+  { id: 22, title: "Fibonacci Number", difficulty: "easy", tags: ["Recursion", "Dynamic Programming"], acceptance: "85.2%", category: "dp", description: "Given n, return the nth Fibonacci number (F(0)=0, F(1)=1).", constraints: ["0 ≤ n ≤ 30"], followUp: "Can you solve it using recursion, memoization, and bottom-up tabulation?", functionName: "fib", params: ["n"], testCases: [{ input: [2], expected: 1 }, { input: [3], expected: 2 }, { input: [5], expected: 5 }, { input: [0], expected: 0 }] },
+  { id: 23, title: "Merge Intervals", difficulty: "medium", tags: ["Arrays", "Sorting"], acceptance: "46.4%", category: "arrays", description: "Given an array of intervals, merge all overlapping intervals.", constraints: ["1 ≤ intervals.length ≤ 10⁴", "intervals[i].length == 2", "0 ≤ starti ≤ endi ≤ 10⁴"], followUp: "Can you solve it in O(n log n) time?", functionName: "merge", params: ["intervals"], testCases: [{ input: [[[1,3],[2,6],[8,10],[15,18]]], expected: [[1,6],[8,10],[15,18]] }, { input: [[[1,4],[4,5]]], expected: [[1,5]] }] },
+  { id: 24, title: "Product Except Self", difficulty: "medium", tags: ["Arrays", "Prefix Sum"], acceptance: "65.2%", category: "arrays", description: "Given an integer array nums, return an array answer such that answer[i] is equal to the product of all elements except nums[i].", constraints: ["2 ≤ nums.length ≤ 10⁵", "-30 ≤ nums[i] ≤ 30"], followUp: "Can you solve it in O(1) extra space?", functionName: "productExceptSelf", params: ["nums"], testCases: [{ input: [[1,2,3,4]], expected: [24,12,8,6] }, { input: [[-1,1,0,-3,3]], expected: [0,0,9,0,0] }] },
+  { id: 25, title: "Spiral Matrix", difficulty: "medium", tags: ["Arrays", "Matrix"], acceptance: "44.8%", category: "arrays", description: "Given an m x n matrix, return all elements of the matrix in spiral order.", constraints: ["m == matrix.length", "n == matrix[0].length", "1 ≤ m, n ≤ 10", "-100 ≤ matrix[i][j] ≤ 100"], followUp: "Can you solve it without using extra space?", functionName: "spiralOrder", params: ["matrix"], testCases: [{ input: [[[1,2,3],[4,5,6],[7,8,9]]], expected: [1,2,3,6,9,8,7,4,5] }, { input: [[[1,2,3,4],[5,6,7,8],[9,10,11,12]]], expected: [1,2,3,4,8,12,11,10,9,5,6,7] }] },
+  { id: 26, title: "Longest Substring Without Repeating", difficulty: "medium", tags: ["Strings", "Sliding Window", "Hash Map"], acceptance: "33.8%", category: "strings", description: "Given a string s, find the length of the longest substring without repeating characters.", constraints: ["0 ≤ s.length ≤ 5 × 10⁴"], followUp: "Can you solve it in O(n) using sliding window?", functionName: "lengthOfLongestSubstring", params: ["s"], testCases: [{ input: ["abcabcbb"], expected: 3 }, { input: ["bbbbb"], expected: 1 }, { input: ["pwwkew"], expected: 3 }, { input: [""], expected: 0 }] },
+  { id: 27, title: "Group Anagrams", difficulty: "medium", tags: ["Strings", "Hash Map", "Sorting"], acceptance: "67.3%", category: "strings", description: "Given an array of strings strs, group the anagrams together (return sorted groups, sorted internally).", constraints: ["1 ≤ strs.length ≤ 10⁴", "0 ≤ strs[i].length ≤ 100"], followUp: "Can you solve it without sorting each string?", functionName: "groupAnagrams", params: ["strs"], testCases: [{ input: [["eat","tea","tan","ate","nat","bat"]], expected: [["ate","eat","tea"],["bat"],["nat","tan"]] }, { input: [[""]], expected: [[""]] }, { input: [["a"]], expected: [["a"]] }] },
+  { id: 28, title: "Detect Cycle", difficulty: "easy", tags: ["Linked List", "Two Pointers"], acceptance: "49.2%", category: "linkedlist", description: "Given an array and a cycle position, detect if there is a cycle (use Floyd's algorithm). Represent as an array with the last element linking back to the index at cyclePos, or -1 for no cycle.", constraints: ["arr.length in range [0, 10⁴]", "-10⁵ ≤ arr[i] ≤ 10⁵"], followUp: "Can you solve it using Floyd's cycle detection algorithm?", functionName: "hasCycle", params: ["head", "cyclePos"], testCases: [{ input: [[3,2,0,-4], 1], expected: true }, { input: [[1,2], 0], expected: true }, { input: [[1], -1], expected: false }] },
+  { id: 29, title: "Remove Nth From End", difficulty: "medium", tags: ["Linked List", "Two Pointers"], acceptance: "42.5%", category: "linkedlist", description: "Given an array and n, remove the nth element from the end and return the new array.", constraints: ["1 ≤ arr.length ≤ 30", "0 ≤ arr[i] ≤ 100", "1 ≤ n ≤ arr.length"], followUp: "Can you solve it in one pass using two pointers?", functionName: "removeNthFromEnd", params: ["head", "n"], testCases: [{ input: [[1,2,3,4,5], 2], expected: [1,2,3,5] }, { input: [[1], 1], expected: [] }, { input: [[1,2], 1], expected: [1] }] },
+  { id: 30, title: "Intersection of Two Lists", difficulty: "easy", tags: ["Linked List", "Two Pointers"], acceptance: "57.8%", category: "linkedlist", description: "Given two arrays that intersect at a given index, find the intersection value. Passed as (listA, listB, intersectVal). Returns the intersecting value or null.", constraints: ["1 ≤ m, n ≤ 3 × 10⁴"], followUp: "Can you solve it in O(m+n) time and O(1) space?", functionName: "getIntersection", params: ["listA", "listB", "intersectVal"], testCases: [{ input: [[4,1,8,4,5], [5,6,1,8,4,5], 8], expected: 8 }, { input: [[1,9,1,2,4], [3,2,4], 2], expected: 2 }] },
+  { id: 31, title: "Maximum Depth", difficulty: "easy", tags: ["Trees", "DFS", "BFS"], acceptance: "73.8%", category: "trees", description: "Given a binary tree represented as a level-order array (null for missing children), return its maximum depth.", constraints: ["0 ≤ arr.length ≤ 10⁴", "-100 ≤ arr[i] ≤ 100"], followUp: "Can you solve it both recursively and iteratively?", functionName: "maxDepth", params: ["root"], testCases: [{ input: [[3,9,20,null,null,15,7]], expected: 3 }, { input: [[1,null,2]], expected: 2 }, { input: [[]], expected: 0 }] },
+  { id: 32, title: "Lowest Common Ancestor", difficulty: "medium", tags: ["Trees", "DFS"], acceptance: "61.4%", category: "trees", description: "Given a BST as a level-order array and two values p and q, find the LCA value. Returns the LCA node value.", constraints: ["2 ≤ arr.length ≤ 10⁵"], followUp: "Can you solve it for a general binary tree?", functionName: "lowestCommonAncestor", params: ["root", "p", "q"], testCases: [{ input: [[6,2,8,0,4,7,9,null,null,3,5], 2, 8], expected: 6 }, { input: [[6,2,8,0,4,7,9,null,null,3,5], 2, 4], expected: 2 }] },
+  { id: 33, title: "Path Sum", difficulty: "easy", tags: ["Trees", "DFS"], acceptance: "49.3%", category: "trees", description: "Given a binary tree represented as a level-order array and a target sum, return true if there is a root-to-leaf path with the given sum.", constraints: ["0 ≤ arr.length ≤ 5000", "-1000 ≤ arr[i] ≤ 1000", "-1000 ≤ targetSum ≤ 1000"], followUp: "Can you find all paths that sum to target?", functionName: "hasPathSum", params: ["root", "targetSum"], testCases: [{ input: [[5,4,8,11,null,13,4,7,2,null,null,null,1], 22], expected: true }, { input: [[1,2,3], 5], expected: false }, { input: [[], 0], expected: false }] },
+  { id: 34, title: "Network Delay Time", difficulty: "medium", tags: ["Graphs", "Dijkstra"], acceptance: "52.3%", category: "graphs", description: "Given n nodes, a times array of [u, v, w] edges, and source k, return the minimum time for all nodes to receive the signal, or -1 if impossible.", constraints: ["1 ≤ k ≤ n ≤ 100", "1 ≤ times.length ≤ 6000"], followUp: "Can you solve it using Dijkstra's algorithm?", functionName: "networkDelayTime", params: ["times", "n", "k"], testCases: [{ input: [[[2,1,1],[3,2,1],[3,4,2]], 4, 3], expected: 2 }, { input: [[[1,2,1]], 2, 1], expected: 1 }] },
+  { id: 35, title: "Climbing Stairs", difficulty: "easy", tags: ["DP", "Recursion"], acceptance: "51.9%", category: "dp", description: "You are climbing a staircase. It takes n steps to reach the top. In how many distinct ways can you climb to the top?", constraints: ["1 ≤ n ≤ 45"], followUp: "Can you generalize to k steps at a time?", functionName: "climbStairs", params: ["n"], testCases: [{ input: [2], expected: 2 }, { input: [3], expected: 3 }, { input: [5], expected: 8 }] },
+  { id: 36, title: "Coin Change", difficulty: "medium", tags: ["DP", "BFS"], acceptance: "42.6%", category: "dp", description: "You are given coins of different denominations and an amount. Return the fewest number of coins to make that amount.", constraints: ["1 ≤ coins.length ≤ 12", "1 ≤ coins[i] ≤ 2³¹ - 1", "0 ≤ amount ≤ 10⁴"], followUp: "Can you solve it using both top-down and bottom-up DP?", functionName: "coinChange", params: ["coins", "amount"], testCases: [{ input: [[1,2,5], 11], expected: 3 }, { input: [[2], 3], expected: -1 }, { input: [[1], 0], expected: 0 }] },
+  { id: 37, title: "Edit Distance", difficulty: "hard", tags: ["DP", "Strings"], acceptance: "56.4%", category: "dp", description: "Given two strings word1 and word2, return the minimum number of operations required to convert word1 to word2.", constraints: ["0 ≤ word1.length, word2.length ≤ 500", "word1 and word2 consist of lowercase English letters"], followUp: "Can you optimize space from O(m*n) to O(min(m,n))?", functionName: "minDistance", params: ["word1", "word2"], testCases: [{ input: ["horse", "ros"], expected: 3 }, { input: ["intention", "execution"], expected: 5 }, { input: ["", "a"], expected: 1 }] },
 ];
 
 const dailyChallenges = [
@@ -2139,6 +2176,13 @@ function initNavbar() {
   if (!menuToggle || !navLinks) return;
   if (navbarInitialized) return;
   navbarInitialized = true;
+
+  // Hide Home link on homepage
+  const homeLink = document.querySelector('.nav-link[href="/index.html#home"]');
+  if (homeLink) {
+    const isHomePage = document.body.getAttribute('data-page') === 'index';
+    homeLink.closest('.nav-item').style.display = isHomePage ? 'none' : '';
+  }
 
   let overlay = document.querySelector(".nav-overlay");
   if (!overlay) {
@@ -3096,6 +3140,8 @@ function restoreQuizResults() {
 }
 // ===== PRACTICE SECTION =====
 function initPracticeSection() {
+  if (window.__practiceInitialized) return;
+  window.__practiceInitialized = true;
   const problemsGrid = document.querySelector(".problems-grid");
   if (!problemsGrid) return;
 
@@ -3129,6 +3175,46 @@ function initPracticeSection() {
       renderProblems(currentFilter);
     });
   });
+
+  // AI Recommend Button
+  const aiRecommendBtn = document.getElementById("ai-recommend-btn");
+  if (aiRecommendBtn) {
+    aiRecommendBtn.addEventListener("click", async () => {
+      try {
+        aiRecommendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finding...';
+        aiRecommendBtn.disabled = true;
+        
+        const res = await fetch("/api/recommendations/next", { credentials: "include" });
+        if (res.status === 401) {
+           alert("Please log in to get AI recommendations.");
+           return;
+        }
+        const data = await res.json();
+        
+        if (data.success && data.recommendation) {
+           const rec = data.recommendation;
+           currentFilter = rec.topic.toLowerCase();
+           currentPage = 1;
+           
+           filterButtons.forEach((b) => {
+             if(b.dataset.filter === currentFilter) b.classList.add("active");
+             else b.classList.remove("active");
+           });
+           
+           renderProblems();
+           alert("AI Recommendation: " + rec.reason + "\n\n" + (rec.aiTip || ""));
+        } else {
+           alert("Could not get recommendation.");
+        }
+      } catch (err) {
+         console.error("AI recommend error:", err);
+         alert("Failed to fetch recommendation.");
+      } finally {
+         aiRecommendBtn.innerHTML = '<i class="fas fa-magic"></i> AI Recommend Next';
+         aiRecommendBtn.disabled = false;
+      }
+    });
+  }
 
   // Search bar
   const searchInput = document.getElementById("searchInput");
@@ -5557,6 +5643,68 @@ document.getElementById("modalTheory").innerHTML = topic.theory;
     }, 600);
   };
 
+// ============================================
+// QUIZ EDITOR
+// ============================================
+function openQuizEditor(problem) {
+  currentProblem = problem;
+  const modal = document.getElementById("quizEditorModal");
+  if (!modal) return;
+  const quizTitle = document.getElementById("quizTitle");
+  if (quizTitle) quizTitle.textContent = problem.title;
+  const quizTopicBadge = document.getElementById("quizTopicBadge");
+  if (quizTopicBadge) quizTopicBadge.textContent = problem.tags.join(", ");
+  const quizDifficulty = document.getElementById("quizDifficulty");
+  if (quizDifficulty) {
+    quizDifficulty.textContent = problem.difficulty;
+    quizDifficulty.className = "quiz-difficulty difficulty-" + problem.difficulty;
+  }
+  const descEl = document.getElementById("quizDescription");
+  if (descEl) {
+    if (problem.description) {
+      let descHTML = problem.description;
+      if (problem.constraints) descHTML += "<br><br><strong>Constraints:</strong><br>" + problem.constraints.map(c => `• ${c}`).join("<br>");
+      descEl.innerHTML = descHTML;
+    } else descEl.textContent = `Solve the "${problem.title}" problem.`;
+  }
+  const quizExamples = document.getElementById("quizExamples");
+  if (quizExamples) quizExamples.innerHTML = generateExamples(problem);
+  renderTestCases(generateTestCases(problem));
+  const editor = document.getElementById("codeEditor");
+  const langSelect = document.getElementById("languageSelect");
+  const lang = langSelect ? langSelect.value : "javascript";
+  const defaultCode = getDefaultCode(lang, problem);
+  const savedDraft = getEditorDraft(problem.id);
+  if (editor) {
+    let code = defaultCode;
+    if (savedDraft !== null) {
+      const draftSig = getEditorDraftSignature(problem.id);
+      const currentSig = getProblemSignature(problem);
+      const isStale = draftSig === null || draftSig !== currentSig;
+      code = isStale ? defaultCode : savedDraft;
+      if (isStale) clearEditorDraft(problem.id);
+    }
+    editor.value = code;
+    editor.scrollTop = 0;
+    editor.scrollLeft = 0;
+    editor.dispatchEvent(new Event('input'));
+  }
+  updateEditorDisplayMode();
+  clearQuizOutput();
+  const outputPanel = document.getElementById('outputPanel');
+  const outputIcon = document.getElementById('outputToggleIcon');
+  if (outputPanel) outputPanel.classList.remove('collapsed');
+  if (outputIcon) { outputIcon.classList.remove('fa-chevron-up'); outputIcon.classList.add('fa-chevron-down'); }
+
+  // CSP-safe button bindings (guard prevents duplicate listeners)
+  if (!window.__quizButtonsBound) {
+    window.__quizButtonsBound = true;
+    document.getElementById('quizRunBtn')?.addEventListener('click', runQuizCode);
+    document.getElementById('quizSubmitBtn')?.addEventListener('click', submitQuizCode);
+    document.getElementById('quizModalClose')?.addEventListener('click', closeQuizEditor);
+    document.getElementById('outputHeader')?.addEventListener('click', toggleOutputPanel);
+  }
+
   modal.classList.add("active");
 }
 function selectSampleProblem(el, problemName) {
@@ -5625,6 +5773,9 @@ function clearEditorDraft(problemId) {
   } catch (e) {
     console.warn('Could not clear editor draft:', e);
   }
+function generateExamples(problem) {
+  const examples = { 1: `<strong>Example 1:</strong><br>Input: nums = [2,7,11,15], target = 9<br>Output: [0,1]<br><br><strong>Follow-up:</strong> Can you solve it in O(n) using a Hash Map?`, 2: `<strong>Example 1:</strong><br>Input: s = "()"<br>Output: true<br><br><strong>Follow-up:</strong> Can you solve it in O(n) using a Stack?`, 3: `<strong>Example 1:</strong><br>Input: list1 = [1,2,4], list2 = [1,3,4]<br>Output: [1,1,2,3,4,4]<br><br><strong>Follow-up:</strong> Can you solve it both iteratively and recursively?`, 4: `<strong>Example 1:</strong><br>Input: nums = [-2,1,-3,4,-1,2,1,-5,4]<br>Output: 6<br><br><strong>Follow-up:</strong> Can you solve it using Kadane's Algorithm in O(n)?`, 6: `<strong>Example 1:</strong><br>Input: adjList = [[2,4],[1,3],[2,4],[1,3]]<br>Output: [[2,4],[1,3],[2,4],[1,3]]<br><br><strong>Follow-up:</strong> Can you solve it using both BFS and DFS approaches?`, 7: `<strong>Example 1:</strong><br>Input: nums = [10,9,2,5,3,7,101,18]<br>Output: 4<br><br><strong>Follow-up:</strong> Can you improve from O(n²) to O(n log n) using binary search?`, 9: `<strong>Example 1:</strong><br>Input: height = [0,1,0,2,1,0,1,3,2,1,2,1]<br>Output: 6<br><br><strong>Follow-up:</strong> Can you solve it in O(n) time and O(1) space using the two-pointer technique?`, 10: `<strong>Example 1:</strong><br>Input: head = [1,2,3,4,5]<br>Output: [5,4,3,2,1]<br><br><strong>Follow-up:</strong> Can you solve it both iteratively and recursively?`, 11: `<strong>Example 1:</strong><br>Input: root = [4,2,7,1,3,6,9]<br>Output: [4,7,2,9,6,3,1]<br><br><strong>Follow-up:</strong> Can you solve it both recursively and iteratively using a queue or stack?`, 12: `<strong>Example 1:</strong><br>Input: root = [2,1,3]<br>Output: true<br><br><strong>Follow-up:</strong> Can you solve it without recursion using iterative inorder traversal?`, 14: `<strong>Example 1:</strong><br>Input: nums = [1,2,3,1]<br>Output: 4<br><br><strong>Follow-up:</strong> Can you solve it in O(n) time and O(1) space using DP with two variables?` };
+  return examples[problem.id] || "<strong>Example:</strong><br>Solve this problem";
 }
 
 function closeQuizEditor() {
@@ -5668,6 +5819,224 @@ function runQuizCode() {
           codeWorker.terminate();
           codeWorker = null;
           output.innerHTML = '<pre class="output-error">❌ Time Limit Exceeded (TLE):\nYour code took too long to execute. Check for infinite loops!</pre>';
+function buildHarnessCode(code, lang, functionName, testCases, problem) {
+  const isClass = problem ? /^[A-Z]/.test(problem.functionName || "") : /^[A-Z]/.test(functionName);
+  const tcJson = JSON.stringify(testCases);
+  if (lang === "javascript") {
+    const clsCheck = isClass ? 'true' : 'false';
+    return code + `\n\nconst __TC__ = ${tcJson};\nconst __RES__ = [];\nfor (let i = 0; i < __TC__.length; i++) {\n  const tc = __TC__[i];\n  try {\n    let result;\n    if (${clsCheck}) {\n      const instance = new ${functionName}(...tc.input);\n      if (tc.methods && Array.isArray(tc.methods)) {\n        result = instance;\n        for (const m of tc.methods) {\n          result = instance[m[0]](...m.slice(1));\n        }\n      } else {\n        result = instance;\n      }\n    } else {\n      result = ${functionName}(...tc.input);\n    }\n    const passed = ${clsCheck} ? (tc.methods ? JSON.stringify(result) === JSON.stringify(tc.expected) : true) : JSON.stringify(result) === JSON.stringify(tc.expected);\n    __RES__.push({ index: i, ran: true, passed, actual: ${clsCheck} ? (tc.methods ? result : "instance") : result, expected: tc.expected, input: tc.input, error: null });\n  } catch (e) {\n    __RES__.push({ index: i, ran: true, passed: false, actual: null, expected: tc.expected, input: tc.input, error: e.message });\n  }\n}\nconsole.log("__RESULT__:" + JSON.stringify(__RES__));`;
+  }
+  if (lang === "python") {
+    const esc = tcJson.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const clsCheck = isClass ? 'True' : 'False';
+    return `${code}\n\nimport json\n__TC__ = json.loads('${esc}')\n__RES__ = []\nfor i, tc in enumerate(__TC__):\n    try:\n        instance = ${functionName}(*tc["input"])\n        if ${clsCheck} and tc.get("methods"):\n            result = instance\n            for m in tc["methods"]:\n                result = getattr(instance, m[0])(*m[1:])\n        elif ${clsCheck}:\n            result = instance\n        else:\n            result = ${functionName}(*tc["input"])\n        passed = True if ${clsCheck} and not tc.get("methods") else json.dumps(result, default=str) == json.dumps(tc["expected"], default=str)\n        __RES__.append({"index": i, "ran": True, "passed": passed, "actual": str(result) if ${clsCheck} and not tc.get("methods") else result, "expected": tc["expected"], "input": tc["input"], "error": None})\n    except Exception as e:\n        __RES__.append({"index": i, "ran": True, "passed": False, "actual": None, "expected": tc["expected"], "input": tc["input"], "error": str(e)})\nprint("__RESULT__:" + json.dumps(__RES__, default=str))`;
+  }
+  if (lang === "cpp") {
+    return genCppHarness(code, functionName, testCases, isClass);
+  }
+  if (lang === "java") {
+    return genJavaHarness(code, functionName, testCases, isClass);
+  }
+  if (lang === "c") {
+    return genCHarness(code, functionName, testCases, isClass);
+  }
+  if (lang === "swift") {
+    return genSwiftHarness(code, functionName, testCases, isClass);
+  }
+  return code;
+}
+
+function j2t(v) {
+  if (v === null || v === undefined) return 'null';
+  if (Array.isArray(v)) {
+    if (v.length === 0) return 'int[]';
+    const inner = j2t(v[0]);
+    if (inner === 'null') return 'int[]';
+    return inner + '[]';
+  }
+  if (typeof v === 'number') return 'int';
+  if (typeof v === 'string') return 'string';
+  if (typeof v === 'boolean') return 'bool';
+  return 'int';
+}
+
+function valToLit(v, t) {
+  if (t === 'int[]') return '[' + v.map(x => x === null || x === undefined ? 0 : x).join(',') + ']';
+  if (t === 'string') return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+  if (t === 'bool') return v ? 'true' : 'false';
+  if (t === 'string[]') return '[' + v.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + ']';
+  if (t === 'string[][]') return '[' + v.map(row => '[' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + ']').join(',') + ']';
+  return String(v);
+}
+
+function genCppHarness(code, fn, tcs, isClass) {
+  const outType = j2t(tcs[0].expected);
+  const inTypes = tcs[0].input.map(v => j2t(v));
+  let s = '#include <iostream>\n#include <string>\n#include <vector>\n#include <sstream>\nusing namespace std;\n\n';
+  s += code + '\n\n';
+  s += 'string __j(bool v) { return v ? "true" : "false"; }\n';
+  s += 'string __j(int v) { return to_string(v); }\n';
+  s += 'string __j(const string& v) { return "\\"" + v + "\\""; }\n';
+  s += 'template<typename T>\nstring __j(const vector<T>& v) {\n  if (v.empty()) return "[]";\n  stringstream ss;\n  ss << "[" << __j(v[0]);\n  for (size_t i=1;i<v.size();i++) ss << "," << __j(v[i]);\n  ss << "]";\n  return ss.str();\n}\n';
+  s += 'int main() {\n  cout << "__RESULT__:";\n  cout << "[";\n';
+  for (let i = 0; i < tcs.length; i++) {
+    if (i > 0) s += '  cout << ",";\n';
+    s += '  try {\n';
+    let callArgs = '';
+    for (let j = 0; j < inTypes.length; j++) {
+      if (j > 0) callArgs += ', ';
+      if (inTypes[j] === 'int[]') callArgs += 'vector<int>{' + tcs[i].input[j].map(x => x === null || x === undefined ? 0 : x).join(',') + '}';
+      else if (inTypes[j] === 'int[][]') callArgs += 'vector<vector<int>>{' + tcs[i].input[j].map(row => '{' + row.join(',') + '}').join(',') + '}';
+      else if (inTypes[j] === 'string[]') callArgs += 'vector<string>{' + tcs[i].input[j].map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}';
+      else if (inTypes[j] === 'string[][]') callArgs += 'vector<vector<string>>{' + tcs[i].input[j].map(row => '{' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}').join(',') + '}';
+      else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
+    }
+    s += '    auto __r = ' + fn + '(' + callArgs + ');\n';
+    s += '    cout << "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":";\n';
+    let compExpr = '"false"';
+    if (outType === 'int[]') {
+      compExpr = '(__r == vector<int>{' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + '} ? "true" : "false")';
+    } else if (outType === 'int[][]') {
+      compExpr = '(__r == vector<vector<int>>{' + tcs[i].expected.map(row => '{' + row.join(',') + '}').join(',') + '} ? "true" : "false")';
+    } else if (outType === 'int') {
+      compExpr = '(__r == ' + valToLit(tcs[i].expected, outType) + ' ? "true" : "false")';
+    } else if (outType === 'string') {
+      compExpr = '(__r == ' + valToLit(tcs[i].expected, outType) + ' ? "true" : "false")';
+    } else if (outType === 'bool') {
+      compExpr = '(__r == ' + valToLit(tcs[i].expected, outType) + ' ? "true" : "false")';
+    } else {
+      compExpr = '"false"';
+    }
+    s += '    cout << ' + compExpr + ';\n';
+    s += '    cout << ",\\"actual\\":" << __j(__r);\n';
+    s += '    cout << "}" << flush;\n';
+    s += '  } catch (...) {\n';
+    s += '    cout << "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":false,\\"error\\":\\"exception\\"}" << flush;\n';
+    s += '  }\n';
+  }
+  s += '  cout << "]" << endl;\n  return 0;\n}\n';
+  return s;
+}
+
+function genJavaHarness(code, fn, tcs, isClass) {
+  const outType = j2t(tcs[0].expected);
+  const inTypes = tcs[0].input.map(v => j2t(v));
+  const javaType = outType === 'int[]' ? 'int[]' : outType === 'int[][]' ? 'int[][]' : outType === 'string' ? 'String' : outType === 'bool' ? 'boolean' : 'int';
+  let s = code + '\n\nclass Main {\n';
+  s += '  static String __j(boolean v) { return String.valueOf(v); }\n';
+  s += '  static String __j(int v) { return String.valueOf(v); }\n';
+  s += '  static String __j(String v) { return v == null ? "null" : "\\"" + v + "\\""; }\n';
+  s += '  static String __j(int[] v) {\n    if (v == null) return "null";\n    StringBuilder sb = new StringBuilder("[");\n    for (int i = 0; i < v.length; i++) { if (i > 0) sb.append(","); sb.append(v[i]); }\n    sb.append("]");\n    return sb.toString();\n  }\n';
+  s += '  static boolean __eq(int[] a, int[] b) {\n    if (a == null && b == null) return true;\n    if (a == null || b == null || a.length != b.length) return false;\n    for (int i = 0; i < a.length; i++) if (a[i] != b[i]) return false;\n    return true;\n  }\n';
+  if (outType === 'int[][]') {
+    s += '  static String __j(int[][] v) {\n    if (v == null) return "null";\n    StringBuilder sb = new StringBuilder("[");\n    for (int i = 0; i < v.length; i++) { if (i > 0) sb.append(","); sb.append(__j(v[i])); }\n    sb.append("]");\n    return sb.toString();\n  }\n';
+    s += '  static boolean __eq(int[][] a, int[][] b) {\n    if (a == null && b == null) return true;\n    if (a == null || b == null || a.length != b.length) return false;\n    for (int i = 0; i < a.length; i++) if (!__eq(a[i], b[i])) return false;\n    return true;\n  }\n';
+  }
+  s += '  public static void main(String[] args) {\n    StringBuilder __res = new StringBuilder("[");\n';
+  for (let i = 0; i < tcs.length; i++) {
+    if (i > 0) s += '    __res.append(",");\n';
+    s += '    try {\n';
+    let callArgs = '';
+    for (let j = 0; j < inTypes.length; j++) {
+      if (j > 0) callArgs += ', ';
+      if (inTypes[j] === 'int[]') callArgs += 'new int[]{' + tcs[i].input[j].map(x => x === null || x === undefined ? 0 : x).join(',') + '}';
+      else if (inTypes[j] === 'int[][]') callArgs += 'new int[][]{' + tcs[i].input[j].map(row => '{' + row.join(',') + '}').join(',') + '}';
+      else if (inTypes[j] === 'string[]') callArgs += 'new String[]{' + tcs[i].input[j].map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}';
+      else if (inTypes[j] === 'string[][]') callArgs += 'new String[][]{' + tcs[i].input[j].map(row => '{' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}').join(',') + '}';
+      else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
+    }
+    s += '      ' + javaType + ' __r = new Solution().' + fn + '(' + callArgs + ');\n';
+    if (outType === 'int[]') {
+      s += '      boolean __p = __eq(__r, new int[]{' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + '});\n';
+    } else if (outType === 'int[][]') {
+      s += '      boolean __p = __eq(__r, new int[][]{' + tcs[i].expected.map(row => '{' + row.join(',') + '}').join(',') + '});\n';
+    } else {
+      s += '      boolean __p = __r == ' + valToLit(tcs[i].expected, outType) + ';\n';
+    }
+    s += '      __res.append("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":" + __p + ",\\"actual\\":" + __j(__r) + "}");\n';
+    s += '    } catch (Exception e) {\n';
+    s += '      __res.append("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":false,\\"error\\":\\"" + (e.getMessage() != null ? e.getMessage().replace("\\"","\'") : "null") + "\\"}");\n';
+    s += '    }\n';
+  }
+  s += '    __res.append("]");\n    System.out.println("__RESULT__:" + __res.toString());\n  }\n}\n';
+  return s;
+}
+
+function genCHarness(code, fn, tcs, isClass) {
+  const outType = j2t(tcs[0].expected);
+  const inTypes = tcs[0].input.map(v => j2t(v));
+  let s = '#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdbool.h>\n\n';
+  s += code + '\n\n';
+  if (outType === 'int[]') {
+    s += 'void __j(int* v, int n, char* buf) {\n  if (v == NULL) { strcpy(buf, "null"); return; }\n  buf[0] = \'[\'; int pos = 1;\n  for (int i = 0; i < n; i++) { if (i > 0) buf[pos++] = \',\'; pos += sprintf(buf + pos, "%d", v[i]); }\n  buf[pos++] = \']\'; buf[pos] = 0;\n}\n';
+    s += 'int __eq(int* a, int* b, int n) {\n  if (n == 0) return 1;\n  if (a == NULL && b == NULL) return 1;\n  if (a == NULL || b == NULL) return 0;\n  for (int i = 0; i < n; i++) if (a[i] != b[i]) return 0;\n  return 1;\n}\n';
+  }
+  if (outType === 'int[][]') {
+    s += 'void __j(int** v, int* sizes, int n, char* buf) {\n  if (v == NULL) { strcpy(buf, "null"); return; }\n  buf[0] = \'[\'; int pos = 1;\n  for (int i = 0; i < n; i++) {\n    if (i > 0) buf[pos++] = \',\';\n    buf[pos++] = \'[\';\n    for (int j = 0; j < sizes[i]; j++) {\n      if (j > 0) buf[pos++] = \',\';\n      pos += sprintf(buf + pos, "%d", v[i][j]);\n    }\n    buf[pos++] = \']\';\n  }\n  buf[pos++] = \']\'; buf[pos] = 0;\n}\n';
+    s += 'int __eq(int** a, int* aSizes, int aLen, int** b, int* bSizes, int bLen) {\n  if (a == NULL && b == NULL) return 1;\n  if (a == NULL || b == NULL || aLen != bLen) return 0;\n  for (int i = 0; i < aLen; i++) {\n    if (aSizes[i] == 0 && bSizes[i] == 0) continue;\n    if (a[i] == NULL || b[i] == NULL || aSizes[i] != bSizes[i]) return 0;\n    for (int j = 0; j < aSizes[i]; j++) if (a[i][j] != b[i][j]) return 0;\n  }\n  return 1;\n}\n';
+  }
+  s += 'int main() {\n  printf("__RESULT__:[");\n';
+  for (let i = 0; i < tcs.length; i++) {
+    if (i > 0) s += '  printf(",");\n';
+    s += '  {\n';
+    let callArgs = '';
+    for (let j = 0; j < inTypes.length; j++) {
+      if (j > 0) callArgs += ', ';
+      if (inTypes[j] === 'int[]') {
+        const arr = tcs[i].input[j];
+        if (arr.length === 0) {
+          callArgs += 'NULL, 0';
+        } else {
+          callArgs += '(int[]){' + arr.map(x => x).join(',') + '}, ' + arr.length;
+        }
+      } else if (inTypes[j] === 'int[][]') {
+        const arr = tcs[i].input[j];
+        if (arr.length === 0) {
+          callArgs += 'NULL, NULL, 0';
+        } else {
+          const rows = arr.map(row => row.length === 0 ? 'NULL' : '(int[]){' + row.join(',') + '}').join(',');
+          const sizes = arr.map(row => row.length).join(',');
+          callArgs += '(int*[]){' + rows + '}, (int[]){' + sizes + '}, ' + arr.length;
+        }
+      } else if (inTypes[j] === 'string[]') {
+        const arr = tcs[i].input[j];
+        callArgs += '(char*[]){' + arr.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}, ' + arr.length;
+      } else if (inTypes[j] === 'string[][]') {
+        const arr = tcs[i].input[j];
+        if (arr.length === 0) {
+          callArgs += 'NULL, NULL, 0';
+        } else {
+          const rows = arr.map(row => row.length === 0 ? 'NULL' : '(char*[]){' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '}').join(',');
+          const sizes = arr.map(row => row.length).join(',');
+          callArgs += '(char***){' + rows + '}, (int[]){' + sizes + '}, ' + arr.length;
+        }
+      } else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
+    }
+    if (isClass) {
+      s += '  printf("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":true,\\"actual\\":\\"instance\\"}");\n';
+    } else if (outType === 'int[]') {
+      const exp = tcs[i].expected;
+      const expLen = Array.isArray(exp) ? exp.length : 1;
+      s += '  printf("{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":");\n';
+      s += '  int* __r = ' + fn + '(' + callArgs + ');\n';
+      if (expLen === 0) {
+        s += '  int __p = __eq(__r, NULL, 0);\n';
+      } else {
+        s += '  int __p = __eq(__r, (int[]){' + exp.map(x => x === null || x === undefined ? 0 : x).join(',') + '}, ' + expLen + ');\n';
+      }
+      s += '  printf(__p ? "true" : "false");\n  printf(",\\"actual\\":");\n  char __buf[256]; __j(__r, ' + expLen + ', __buf); printf("%s", __buf);\n  printf("}");\n';
+    } else if (outType === 'int[][]') {
+      const exp2d = tcs[i].expected;
+      const expLen = exp2d.length;
+      s += '  int** __r = ' + fn + '(' + callArgs + ');\n';
+      if (expLen === 0) {
+        s += '  int __p = 1;\n';
+        s += '  printf("true");\n  printf(",\\"actual\\":[]");\n  printf("}");\n';
+      } else {
+        const expRows = exp2d.map(row => row.length === 0 ? 'NULL' : '(int[]){' + row.join(',') + '}').join(',');
+        const expSizes = exp2d.map(row => row.length).join(',');
+        s += '  int __p = __eq(__r, (int[]){' + expSizes + '}, ' + expLen + ', (int*[]){' + expRows + '}, (int[]){' + expSizes + '}, ' + expLen + ');\n';
+        s += '  printf(__p ? "true" : "false");\n  printf(",\\"actual\\":");\n  char __buf[1024]; __j(__r, (int[]){' + expSizes + '}, ' + expLen + ', __buf); printf("%s", __buf);\n  printf("}");\n';
       }
   }, 2000);
 
@@ -5685,6 +6054,61 @@ function runQuizCode() {
       codeWorker.terminate();
       codeWorker = null;
   };
+      s += '  printf(__p ? "true" : "false");\n  printf(",\\"actual\\":");\n';
+      if (outType === 'string') s += '  printf(__r ? "\\"%s\\"" : "null", __r);\n';
+      else if (outType === 'bool') s += '  printf(__r ? "true" : "false");\n';
+      else s += '  printf("%d", __r);\n';
+      s += '  printf("}");\n';
+    }
+    s += '  }\n';
+  }
+  s += '  printf("]\\n");\n  return 0;\n}\n';
+  return s;
+}
+
+function genSwiftHarness(code, fn, tcs, isClass) {
+  const outType = j2t(tcs[0].expected);
+  const inTypes = tcs[0].input.map(v => j2t(v));
+  let s = 'import Foundation\n\n';
+  s += code + '\n\n';
+  s += 'func __j(_ v: Int) -> String { return String(v) }\n';
+  s += 'func __j(_ v: Bool) -> String { return v ? "true" : "false" }\n';
+  s += 'func __j(_ v: String) -> String { return "\\"\\(v)\\"" }\n';
+  if (outType === 'int[]' || outType === 'int[][]') {
+    s += 'func __j(_ v: [Int]) -> String {\n  if v.isEmpty { return "[]" }\n  return "[" + v.map(String.init).joined(separator: ",") + "]"\n}\n';
+  }
+  if (outType === 'int[][]') {
+    s += 'func __j(_ v: [[Int]]) -> String {\n  return "[" + v.map { __j($0) }.joined(separator: ",") + "]"\n}\n';
+  }
+  s += 'var __res = "["\n';
+  for (let i = 0; i < tcs.length; i++) {
+    if (i > 0) s += '__res += ","\n';
+    s += 'do {\n';
+    let callArgs = '';
+    for (let j = 0; j < inTypes.length; j++) {
+      if (j > 0) callArgs += ', ';
+      if (inTypes[j] === 'int[]') callArgs += '[' + tcs[i].input[j].map(x => x === null || x === undefined ? 0 : x).join(',') + '] as [Int]';
+      else if (inTypes[j] === 'int[][]') callArgs += '[' + tcs[i].input[j].map(row => '[' + row.join(',') + ']').join(',') + '] as [[Int]]';
+      else if (inTypes[j] === 'string[]') callArgs += '[' + tcs[i].input[j].map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + '] as [String]';
+      else if (inTypes[j] === 'string[][]') callArgs += '[' + tcs[i].input[j].map(row => '[' + row.map(x => '"' + String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"').join(',') + ']').join(',') + '] as [[String]]';
+      else callArgs += valToLit(tcs[i].input[j], inTypes[j]);
+    }
+    s += '  let __r = ' + fn + '(' + callArgs + ')\n';
+    if (outType === 'int[]') {
+      s += '  let __p = __r == [' + tcs[i].expected.map(x => x === null || x === undefined ? 0 : x).join(',') + ']\n';
+    } else if (outType === 'int[][]') {
+      s += '  let __p = __r == [' + tcs[i].expected.map(row => '[' + row.join(',') + ']').join(',') + ']\n';
+    } else {
+      s += '  let __p = __r == ' + valToLit(tcs[i].expected, outType) + '\n';
+    }
+    s += '  __res += "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":" + (__p ? "true" : "false") + ",\\"actual\\":" + __j(__r) + "}"\n';
+    s += '} catch {\n';
+    s += '  __res += "{\\"index\\":' + i + ',\\"ran\\":true,\\"passed\\":false,\\"error\\":\\"exception\\"}"\n';
+    s += '}\n';
+  }
+  s += '__res += "]"\nprint("__RESULT__:" + __res)\n';
+  return s;
+}
 
   // Handle fatal worker-level errors
   codeWorker.onerror = function(e) {
@@ -5707,6 +6131,27 @@ function submitQuizCode() {
   if (!code.trim()) {
     showNotification("Please write some code before submitting!", "error");
     return;
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? window.location.origin
+  : '';
+
+async function executeViaApi(lang, code, originalCode) {
+  // Make sure this points to your new secure Node.js route
+  const response = await fetch(`${API_BASE}/api/execute`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sourceCode: code,
+      originalCode: originalCode,
+      language: lang,
+      stdin: ""
+    })
+  });
+  
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: "Execution API error (" + response.status + ")" }));
+    throw new Error(err.message || "Failed to execute code");
   }
 
   if (!currentProblem) {
@@ -5934,6 +6379,43 @@ function openQuizEditor(problem) {
       descHTML +=
         "<br><br><strong>Constraints:</strong><br>" +
         problem.constraints.map((c) => `• ${c}`).join("<br>");
+async function runQuizCode() {
+  if (_running) return;
+  const editor = document.getElementById("codeEditor");
+  if (!editor) return;
+  const code = editor.value;
+  if (!code.trim()) { setOutput("Please write some code first.", "error"); return; }
+  if (!currentProblem) { setOutput("No problem selected.", "error"); return; }
+  const langSelect = document.getElementById("languageSelect");
+  const lang = langSelect ? langSelect.value : "javascript";
+  const problem = currentProblem;
+  const testCases = generateTestCases(problem);
+  if (!testCases || testCases.length === 0) {
+    setOutput("This problem doesn't have automated test cases yet.", "error");
+    return;
+  }
+  renderTestCases(testCases);
+  setOutput("", "running");
+  _running = true;
+  try {
+    const result = await executeCode(code, lang, problem);
+    if (!result.testResults || !Array.isArray(result.testResults)) {
+      setOutput("Execution returned no test results.", "error");
+      return;
+    }
+    renderTestCases(testCases, result.testResults);
+    if (result.allPassed) {
+      setOutput("All tests passed!", "success");
+    } else {
+      const failures = result.testResults.filter(r => r && !r.passed);
+      const failMsg = failures.length + " / " + result.testResults.length + " tests failed";
+      const out = result.rawOutput ? failMsg + "\n\nConsole output:\n" + result.rawOutput : failMsg;
+      setOutput(out, "error");
+    }
+    if (result.metrics && result.metrics.cpuTime) {
+      const metricText = `\n\n⏱️ Execution Time: ${result.metrics.cpuTime} sec\n💾 Memory Used: ${result.metrics.memory} KB`;
+      const el = document.getElementById("quizOutputContent");
+      if (el) el.innerHTML += `<pre style="color:var(--accent); margin-top:10px;">${metricText}</pre>`;
     }
     descEl.innerHTML = descHTML;
   } else {
@@ -6093,6 +6575,15 @@ function getActivityLevel(count) {
   if (count === 2) return 2;
   if (count <= 4) return 3;
   return 4;
+function toggleOutputPanel() {
+  const panel = document.getElementById('outputPanel');
+  const icon = document.getElementById('outputToggleIcon');
+  const header = document.getElementById('outputHeader');
+  if (!panel) return;
+  panel.classList.toggle('collapsed');
+  const collapsed = panel.classList.contains('collapsed');
+  if (icon) { icon.classList.toggle('fa-chevron-down', !collapsed); icon.classList.toggle('fa-chevron-up', collapsed); }
+  if (header) header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
 }
 
 function renderActivityHeatmap() {
@@ -7186,6 +7677,58 @@ function loadGameQuestion() {
       } else {
         selectGameAnswer(-1);
       }
+// Initialize quiz editor
+function wireQuizButtons() {
+  const runBtn = document.getElementById('quizRunBtn');
+  const submitBtn = document.getElementById('quizSubmitBtn');
+  if (runBtn && !runBtn._quizWired) { runBtn.addEventListener('click', runQuizCode); runBtn._quizWired = true; }
+  if (submitBtn && !submitBtn._quizWired) { submitBtn.addEventListener('click', submitQuizCode); submitBtn._quizWired = true; }
+}
+
+function initializeQuizEditor() {
+  const editor = document.getElementById('codeEditor');
+  const languageSelect = document.getElementById('languageSelect');
+  if (!editor || editor.dataset.initialized === 'true') { wireQuizButtons(); return; }
+  editor.dataset.initialized = 'true';
+  const syncEditorState = () => { updateSyntaxHighlight(); updateLineNumbers(); syncScroll(); };
+  editor.addEventListener('input', () => { syncEditorState(); if (currentProblem) saveEditorDraft(currentProblem.id, editor.value, getProblemSignature(currentProblem)); });
+  editor.addEventListener('scroll', syncScroll);
+  editor.addEventListener('keyup', updateCurrentLineHighlight);
+  editor.addEventListener('click', updateCurrentLineHighlight);
+  editor.addEventListener('focus', updateCurrentLineHighlight);
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') { e.preventDefault(); const start = editor.selectionStart; const end = editor.selectionEnd; const value = editor.value; editor.value = `${value.slice(0, start)}    ${value.slice(end)}`; editor.selectionStart = editor.selectionEnd = start + 4; syncEditorState(); }
+    else if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runQuizCode(); }
+    else if (e.ctrlKey && e.key === 's') { e.preventDefault(); submitQuizCode(); }
+  });
+  wireQuizButtons();
+  if (languageSelect) languageSelect.addEventListener('change', () => { const editor = document.getElementById('codeEditor'); if (editor && currentProblem) { editor.value = getDefaultCode(languageSelect.value, currentProblem); editor.scrollTop = 0; editor.scrollLeft = 0; } syncEditorState(); updateEditorDisplayMode(); });
+  syncEditorState();
+  initEditorZoom(editor);
+}
+
+function initEditorZoom(editor) {
+  const zoomMin = 10, zoomMax = 28;
+  const container = editor.closest('.code-editor-container') || editor.parentElement;
+  let fontSize = parseInt(localStorage.getItem('editorFontSize')) || 14;
+  const applyZoom = (size) => {
+    size = Math.min(zoomMax, Math.max(zoomMin, size));
+    fontSize = size;
+    container.style.setProperty('--editor-font-size', size + 'px');
+    localStorage.setItem('editorFontSize', size);
+    if (typeof updateLineNumbers === 'function') updateLineNumbers();
+  };
+  applyZoom(fontSize);
+  editor.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    applyZoom(fontSize + (e.deltaY > 0 ? -1 : 1));
+  }, { passive: false });
+  editor.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); applyZoom(fontSize + 1); }
+      else if (e.key === '-') { e.preventDefault(); applyZoom(fontSize - 1); }
+      else if (e.key === '0') { e.preventDefault(); applyZoom(14); }
     }
   }, 1000);
 }
@@ -7319,6 +7862,25 @@ function flipMemoryCard(index) {
         currentGame.flippedMemoryCards = [];
       }, 1000);
     }
+// ============================================
+// HASH CHANGE ROUTER
+// ============================================
+window.addEventListener('hashchange', () => {
+  const currentHash = window.location.hash || '#home';
+  if (currentHash === '#home' || currentHash === '') {
+    document.querySelectorAll('*').forEach(element => {
+      const id = element.id ? element.id.toLowerCase() : '';
+      const className = element.className ? element.className.toString().toLowerCase() : '';
+      if (id.includes('quiz') || className.includes('quiz') || id.includes('assistant')) {
+        element.dataset.routeHidden = 'true';
+        element.style.display = 'none';
+      } else if (element.dataset.routeHidden === 'true') {
+        delete element.dataset.routeHidden;
+        element.classList.remove('hidden');
+        element.style.display = '';
+      }
+    });
+    if (typeof tQuiz !== 'undefined' && tQuiz !== null) tQuiz = null;
   }
 }
 
@@ -7947,6 +8509,42 @@ function injectRevisionSchedulerUI(topicId) {
   if (!targetHeader) {
     console.warn("[Scheduler UI] Learning title target element not found on this view layer.");
     return;
+  try {
+    const res = await fetch(`/api/problem-notes/${currentProblem.id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(noteData)
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (noteSaveStatus) {
+        noteSaveStatus.textContent = "Saved to cloud!";
+        setTimeout(() => { noteSaveStatus.textContent = ""; }, 3000);
+      }
+    } else {
+      if (noteSaveStatus) noteSaveStatus.textContent = "Saved locally.";
+    }
+  } catch (err) {
+    console.warn("Cloud sync failed:", err);
+    if (noteSaveStatus) noteSaveStatus.textContent = "Saved locally (offline).";
+  }
+};
+
+window.syncProblemNotesDown = async function() {
+  if (location.protocol === "file:") return;
+  try {
+    const res = await fetch("/api/problem-notes", { credentials: "include" });
+    if (res.status === 200) {
+      const data = await res.json();
+      if (data.success && data.notes) {
+        userProgress.problemNotes = { ...(userProgress.problemNotes || {}), ...data.notes };
+        if (typeof saveUserData === "function") saveUserData();
+        else localStorage.setItem("algoInfinityVerse", JSON.stringify(userProgress));
+      }
+    }
+  } catch (err) {
+    console.warn("Could not sync notes down:", err);
   }
 
   // Prevent multiple badge components from stacking up
@@ -7963,6 +8561,33 @@ function injectRevisionSchedulerUI(topicId) {
     const nextDate = new Date(schedule.nextReviewDate);
     if (now >= nextDate) {
       dynamicStatusHTML = `<span class="rev-badge rev-due">⚡ Review Due Now!</span>`;
+  try {
+    const res = await fetch(`/api/spaced-repetition/${problemId}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ existing, quality })
+    });
+    const data = await res.json();
+    if (data.success && data.card) {
+      userProgress.spacedRepetition[problemId] = data.card;
+      if (quality >= 3) {
+        userProgress.reviewStreak = (userProgress.reviewStreak || 0) + 1;
+      }
+      saveUserData();
+      showNotification(`Scheduled! Next review in ${data.card.interval} days 📅`, "success");
+    } else {
+      showNotification("Could not schedule on cloud. Saved locally.", "info");
+    }
+  } catch (err) {
+    console.warn("Spaced repetition sync failed:", err);
+    
+    // Client-side fallback computation
+    const q = Math.max(0, Math.min(5, Number(quality)));
+    let { repetitions = 0, easeFactor = 2.5, interval = 0 } = existing;
+    if (q < 3) {
+      repetitions = 0;
+      interval = 1;
     } else {
       const formattedDate = nextDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       dynamicStatusHTML = `<span class="rev-badge rev-waiting">📅 Next Review: ${formattedDate}</span>`;
@@ -7986,6 +8611,22 @@ function injectRevisionSchedulerUI(topicId) {
     </div>
     <div class="rev-history-text">History Track: ${schedule.history.length} completion checkpoints verified</div>
   `;
+window.syncSpacedRepetitionDown = async function() {
+  if (location.protocol === "file:") return;
+  try {
+    const res = await fetch("/api/spaced-repetition", { credentials: "include" });
+    if (res.status === 200) {
+      const data = await res.json();
+      if (data.success && data.cards) {
+        userProgress.spacedRepetition = { ...(userProgress.spacedRepetition || {}), ...data.cards };
+        if (typeof saveUserData === "function") saveUserData();
+        else localStorage.setItem("algoInfinityVerse", JSON.stringify(userProgress));
+      }
+    }
+  } catch (err) {
+    console.warn("Could not sync spaced repetition down:", err);
+  }
+};
 
   // Mount cleanly directly right beneath your main page introduction title!
   targetHeader.parentNode.insertBefore(schedulerContainer, targetHeader.nextSibling);
@@ -7995,3 +8636,331 @@ window.debugSM2State = function() {
   console.log("Current SM-2 Spaced Repetition State:", userProgress.revisionSchedule);
   return "SM-2 State Logged Successfully.";
 };
+
+// Offline/Online status handler
+window.addEventListener('load', () => {
+  function updateOnlineStatus() {
+    const banner = document.getElementById('offline-banner');
+    if (banner) {
+      if (navigator.onLine) {
+        banner.classList.add('hidden');
+      } else {
+        banner.classList.remove('hidden');
+      }
+    }
+  }
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
+
+  // Sync notes on load
+  if (window.syncProblemNotesDown) {
+    window.syncProblemNotesDown();
+  }
+  
+  // Sync spaced repetition on load
+  if (window.syncSpacedRepetitionDown) {
+    window.syncSpacedRepetitionDown();
+  }
+});
+
+// ============================================
+// PROBLEM FILTERING WITH CORRECT COUNT
+// ============================================
+
+/**
+ * Update the problem count display
+ * @param {Array} filteredProblems - Array of filtered problems
+ */
+function updateProblemCount(filteredProblems) {
+    // Update visible count
+    const visibleCountEl = document.getElementById('visible-count');
+    if (visibleCountEl) {
+        const total = filteredProblems.length;
+        visibleCountEl.textContent = total;
+    }
+    
+    // Update total count (if separate)
+    const totalCountEl = document.getElementById('total-count');
+    if (totalCountEl) {
+        // This should show total problems before filtering
+        const allProblems = getAllProblems();
+        totalCountEl.textContent = allProblems.length;
+    }
+    
+    // Update the problem count display (legacy)
+    const countElement = document.querySelector('.problem-count');
+    if (countElement) {
+        const total = filteredProblems.length;
+        countElement.textContent = `${total} problem${total !== 1 ? 's' : ''}`;
+    }
+    
+    // Show/hide empty state
+    const emptyState = document.getElementById('emptyState');
+    if (emptyState) {
+        if (filteredProblems.length === 0) {
+            emptyState.classList.remove('hidden');
+        } else {
+            emptyState.classList.add('hidden');
+        }
+    }
+}
+
+/**
+ * Get all problems (from your data source)
+ * @returns {Array} All practice problems
+ */
+function getAllProblems() {
+    // Use your existing problems data
+    return practiceProblems || window.practiceProblems || [];
+}
+
+/**
+ * Filter problems based on selected difficulty
+ * @param {string} difficulty - 'all', 'easy', 'medium', 'hard'
+ * @param {Array} problems - Problems to filter
+ * @returns {Array} Filtered problems
+ */
+function filterProblemsByDifficulty(difficulty, problems) {
+    if (difficulty === 'all') {
+        return problems;
+    }
+    return problems.filter(problem => 
+        problem.difficulty.toLowerCase() === difficulty.toLowerCase()
+    );
+}
+
+/**
+ * Main filter function - handles filtering AND count update
+ */
+function filterProblems() {
+    const selectedDifficulty = getSelectedDifficulty();
+    const allProblems = getAllProblems();
+    
+    // Filter problems
+    const filtered = filterProblemsByDifficulty(selectedDifficulty, allProblems);
+    
+    // Render filtered problems
+    renderProblems(filtered);
+    
+    // Update count
+    updateProblemCount(filtered);
+    
+    // Update URL hash if needed (for bookmarking)
+    if (selectedDifficulty !== 'all') {
+        window.location.hash = `filter=${selectedDifficulty}`;
+    }
+}
+
+/**
+ * Get filter from URL hash on page load
+ */
+const VALID_PROBLEM_FILTERS = new Set(['all', 'easy', 'medium', 'hard', 'favorites']);
+
+function getFilterFromURL() {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const filter = params.get('filter') || 'all';
+    return VALID_PROBLEM_FILTERS.has(filter) ? filter : 'all';
+}
+
+/**
+ * Apply filter on page load from URL
+ */
+function applyFilterFromURL() {
+    const filter = getFilterFromURL();
+    if (filter !== 'all') {
+        const filterBtn = document.querySelector(`.filter-btn[data-filter="${filter}"]`);
+        if (filterBtn) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            filterBtn.classList.add('active');
+        }
+    }
+    filterProblems();
+}
+
+// ============================================
+// RENDER PROBLEMS WITH COUNT UPDATE
+// ============================================
+
+const originalRenderProblems = window.renderProblems;
+if (typeof originalRenderProblems === 'function') {
+    window.renderProblems = function(problems) {
+        originalRenderProblems.call(this, problems);
+    };
+}
+
+// ============================================
+// COMPLETE FILTER IMPLEMENTATION
+// ============================================
+
+// Initialize filter buttons on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize filter buttons
+    initFilterButtons();
+    
+    // Apply filter from URL if any
+    applyFilterFromURL();
+    
+    // Initial render
+    filterProblems();
+});
+
+/**
+ * Initialize filter buttons with event listeners
+ */
+function initFilterButtons() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    
+    filterButtons.forEach((btn) => {
+        btn.addEventListener('click', function() {
+            filterButtons.forEach((b) => {
+                const isActive = b === this;
+                b.classList.toggle('active', isActive);
+                b.setAttribute('aria-pressed', String(isActive));
+            });
+            
+            // Reset pagination to page 1
+            currentPage = 1;
+            
+            // Filter and render
+            filterProblems();
+        });
+    });
+    
+    // Clear filters button
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', function() {
+            // Reset to 'all'
+            filterButtons.forEach((b) => b.classList.remove('active'));
+            const allBtn = document.querySelector('.filter-btn[data-filter="all"]');
+            if (allBtn) allBtn.classList.add('active');
+            
+            // Clear search
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                currentSearch = '';
+            }
+            
+            // Reset and render
+            currentPage = 1;
+            filterProblems();
+        });
+    }
+}
+
+/**
+ * Get selected difficulty from active filter button
+ */
+function getSelectedDifficulty() {
+    const activeFilter = document.querySelector('.filter-btn.active');
+    if (activeFilter) {
+        return activeFilter.dataset.filter || 'all';
+    }
+    return 'all';
+}
+
+/**
+ * Get all problems
+ */
+function getAllProblems() {
+    return practiceProblems || [];
+}
+
+/**
+ * Filter problems by difficulty
+ */
+function filterProblemsByDifficulty(difficulty, problems) {
+    if (difficulty === 'all') {
+        return problems;
+    }
+    if (difficulty === 'favorites') {
+        return problems.filter(p => userProgress.favoriteProblems.includes(p.id));
+    }
+    return problems.filter(problem => 
+        problem.difficulty.toLowerCase() === difficulty.toLowerCase()
+    );
+}
+
+/**
+ * Filter problems with search and difficulty
+ */
+function filterProblems() {
+    const selectedDifficulty = getSelectedDifficulty();
+    const allProblems = getAllProblems();
+    const searchTerm = currentSearch || '';
+    
+    // Filter by difficulty
+    let filtered = filterProblemsByDifficulty(selectedDifficulty, allProblems);
+    
+    // Filter by search term
+    if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(problem => 
+            problem.title.toLowerCase().includes(term) ||
+            problem.tags.some(tag => tag.toLowerCase().includes(term)) ||
+            (problem.description && problem.description.toLowerCase().includes(term))
+        );
+    }
+    
+    // Update count
+    updateProblemCount(filtered);
+    
+    // Render with pagination
+    renderProblemsWithPagination(filtered);
+}
+
+/**
+ * Render problems with pagination
+ */
+function renderProblemsWithPagination(filteredProblems) {
+    const totalProblems = filteredProblems.length;
+    const totalPages = Math.max(1, Math.ceil(totalProblems / PROBLEMS_PER_PAGE));
+    
+    if (currentPage > totalPages) currentPage = totalPages;
+    
+    const start = (currentPage - 1) * PROBLEMS_PER_PAGE;
+    const end = Math.min(start + PROBLEMS_PER_PAGE, totalProblems);
+    const pageProblems = filteredProblems.slice(start, end);
+    
+    // Render the problems
+    renderProblems(pageProblems);
+    
+    // Update pagination
+    updatePaginationControls(currentPage, totalPages);
+}
+
+/**
+ * Update problem count display
+ */
+function updateProblemCount(filteredProblems) {
+    const total = filteredProblems.length;
+    const visibleCountEl = document.getElementById('visible-count');
+    const totalCountEl = document.getElementById('total-count');
+    const problemLabel = document.getElementById('problem-label');
+    const emptyState = document.getElementById('emptyState');
+    
+    if (visibleCountEl) {
+        visibleCountEl.textContent = total;
+    }
+    
+  if (totalCountEl) {
+        const allProblems = getAllProblems();
+        totalCountEl.textContent = allProblems.length;
+    }
+    
+    if (problemLabel) {
+        problemLabel.textContent = total === 1 ? 'problem' : 'problems';
+    }
+    
+    if (emptyState) {
+        emptyState.classList.toggle('hidden', total !== 0);
+    }
+    
+    // Legacy support
+    const countElement = document.querySelector('.problem-count');
+    if (countElement) {
+        countElement.textContent = `${total} problem${total !== 1 ? 's' : ''}`;
+    }
+}

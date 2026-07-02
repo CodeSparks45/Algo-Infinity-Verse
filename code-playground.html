@@ -50,7 +50,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>📊 Acceptance Prediction</h3>
-                    <button class="modal-close" type="button" onclick="closePredictionModal()">&times;</button>
+                    <button id="closePredictionBtn" class="modal-close" type="button">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div id="predictionResults">
@@ -134,7 +134,27 @@
                         const result = new Function(`"use strict";\n${code}\nreturn solve();`)();
                         console.log = origLog;
                         const time = (performance.now() - start).toFixed(2);
-                        const outputText = `📤 Output:\n${logs.join('\n') || '(no output)'}\n\n✅ Result: ${result !== undefined ? result : 'Done'}\n\n⏱️ ${time}ms`;
+                        let complexityStr = '';
+                        try {
+                            if (typeof window.analyzeComplexity !== 'function') {
+                                await new Promise((resolve) => {
+                                    const script = document.createElement('script');
+                                    script.src = 'modules/complexity-client.js';
+                                    script.onload = resolve;
+                                    script.onerror = resolve;
+                                    document.head.appendChild(script);
+                                });
+                            }
+                            if (typeof window.analyzeComplexity === 'function') {
+                                const complexity = await window.analyzeComplexity(code);
+                                if (complexity) {
+                                    complexityStr = `\n\n📊 Time Complexity: ${complexity}`;
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Complexity analysis failed", err);
+                        }
+                        const outputText = `📤 Output:\n${logs.join('\n') || '(no output)'}\n\n✅ Result: ${result !== undefined ? result : 'Done'}\n\n⏱️ ${time}ms${complexityStr}`;
                         setOutput(outputText, 'success');
                     } catch(e) {
                         console.log = origLog;
@@ -200,6 +220,10 @@
         document.getElementById('predictBtn').addEventListener('click', () => {
             document.getElementById('predictionModal').style.display = 'block';
         });
+
+        document
+            .getElementById('closePredictionBtn')
+            .addEventListener('click', closePredictionModal);
 
         function closePredictionModal() {
             document.getElementById('predictionModal').style.display = 'none';

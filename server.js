@@ -13,18 +13,35 @@ import { findMissingSkills } from "./backend/resume-analyzer/skills.js";
 import { getSuggestions } from "./backend/resume-analyzer/suggestions.js";
 import { analyzeWorkflow } from "./backend/repository-analyzer/cicdValidator.js";
 import { VCSFactory } from "./backend/vcs/VCSFactory.js";
-import { enqueueBulkAudit, getBatchProgress } from "./backend/jobs/queue.js";
+import { enqueueBulkAudit, getBatchProgress, MAX_BULK_AUDIT_URLS } from "./backend/jobs/queue.js";
 import "./backend/jobs/worker.js"; // Initialize worker
 
 import { parse as csvParse } from "csv-parse/sync";
 import { v4 as uuidv4 } from "uuid";
 import { generateSdlcAdvice } from "./sdlcAdvisor.js";
+
+const JUDGE0_LANGUAGE_IDS = {
+  python:      71,
+  javascript:  63,
+  java:        62,
+  'c++':       54,
+  cpp:         54,
+  c:           50,
+  typescript:  74,
+  go:          60,
+  rust:        73,
+  ruby:        72,
+  swift:       83,
+  dart:        98,
+  haskell:     89,
+  kotlin:      78,
+};
 import { handleReportRequest } from "./backend/reports/reportGenerator.js";
 import { getUserBenchmark } from "./backend/benchmarking/percentileService.js";
 import { Server as SocketIOServer } from "socket.io";
-import { 
-  ACCESS_TOKEN_MAX_AGE_SECONDS, getClientIdentifier, isSignupRateLimited, 
-  recordSignupAttempt, normalizeAuthDelay, createAccessToken, 
+import {
+  ACCESS_TOKEN_MAX_AGE_SECONDS, REFRESH_TOKEN_MAX_AGE_SECONDS, getClientIdentifier, isSignupRateLimited,
+  recordSignupAttempt, normalizeAuthDelay, createAccessToken,
   verifyAccessToken, hashPassword, passwordMatches, validateSignup,
   createRefreshToken, verifyRefreshToken, revokeTokenFamily,
   activeRefreshFamilies
@@ -36,7 +53,13 @@ import {
   forgotPasswordLimiter,
   changePasswordLimiter,
   deleteAccountLimiter,
-  resendVerificationLimiter
+  resendVerificationLimiter,
+  resumeAnalysisLimiter,
+  repoAnalysisLimiter,
+  sdlcAdvisorLimiter,
+  predictionLimiter,
+  bulkAuditLimiter,
+  logErrorLimiter
 } from "./backend/utils/rateLimiter.js";
 import { applySM2 } from "./backend/services/memory.service.js";
 import { sendVerificationEmail } from "./backend/services/email.service.js";
@@ -48,8 +71,6 @@ import {
   getHistory,
 } from "./pages/Dsa-Battle/Battleservice.js";
 
-const upload = multer({ storage: multer.memoryStorage() }).single("resume");
-const uploadCsv = multer({ storage: multer.memoryStorage() }).single("csv");
 import { instrumentJS } from "./modules/code-tracer.js";
 
 const upload = multer({
@@ -78,15 +99,28 @@ function validateMagicBytes(buffer, mimeType) {
 }
 const userSocketMap = new Map();
 const studyRooms = new Map();
+const memoryUserStore = new Map();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = __dirname;
-const DATA_DIR = path.join(ROOT, "data");
+const IS_VERCEL = process.env.VERCEL === "1";
+const DATA_DIR = IS_VERCEL
+  ? path.join("/tmp", "algo-infinity-verse")
+  : path.join(ROOT, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const MEMORY_FILE = path.join(DATA_DIR, "memory.json");
 const TEAM_PROFILES_FILE = path.join(DATA_DIR, "team_profiles.json");
 const AUDITS_FILE = path.join(DATA_DIR, "audits_history.json");
 const EXECUTIONS_FILE = path.join(DATA_DIR, "executions.json");
+const CLIENT_ERRORS_FILE = path.join(DATA_DIR, "client_errors.json");
+const FEEDBACK_FILE = path.join(DATA_DIR, "feedback.json");
+const INTERVIEW_EXPERIENCES_FILE = path.join(DATA_DIR, "interview-experiences.json");
+
+// Caps for append-only JSON logs so they can never grow unbounded on disk.
+const MAX_CLIENT_ERROR_ENTRIES = 1000;
+const MAX_FEEDBACK_ENTRIES = 5000;
+const MAX_INTERVIEW_EXPERIENCE_ENTRIES = 5000;
+const MAX_AUDIT_HISTORY_ENTRIES = 1000;
 const SESSION_COOKIE = "aiv_session";
 const ACCESS_COOKIE = "aiv_access";
 const REFRESH_COOKIE = "aiv_refresh";
@@ -163,22 +197,36 @@ function getRefreshToken(req) {
   return cookies[REFRESH_COOKIE] || null;
 }
 
-function authCookies(token, req) {
+// Builds the Set-Cookie header value(s) for an authenticated response. Returns
+// an array of two cookies: the short-lived access token (read by getSession)
+// and the long-lived refresh token (read by getRefreshToken on /api/refresh).
+// Previously this set only the access cookie, so the aiv_refresh cookie was
+// never issued and silent token refresh could never succeed (#1225).
+function authCookies(accessToken, refreshToken, req) {
   const secure = req.headers["x-forwarded-proto"] === "https";
+  const cookie = (name, value, maxAge) =>
+    [
+      `${name}=${encodeURIComponent(value)}`,
+      "HttpOnly",
+      "SameSite=Lax",
+      "Path=/",
+      `Max-Age=${maxAge}`,
+      secure ? "Secure" : "",
+    ]
+      .filter(Boolean)
+      .join("; ");
+
   return [
-    `${SESSION_COOKIE}=${encodeURIComponent(token)}`,
-    "HttpOnly",
-    "SameSite=Lax",
-    "Path=/",
-    `Max-Age=${ACCESS_TOKEN_MAX_AGE_SECONDS}`,
-    secure ? "Secure" : "",
-  ]
-    .filter(Boolean)
-    .join("; ");
+    cookie(SESSION_COOKIE, accessToken, ACCESS_TOKEN_MAX_AGE_SECONDS),
+    cookie(REFRESH_COOKIE, refreshToken, REFRESH_TOKEN_MAX_AGE_SECONDS),
+  ];
 }
 
 function clearAuthCookies() {
-  return `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
+  return [
+    `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+    `${REFRESH_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+  ];
 }
 
 let db = null;
@@ -210,23 +258,40 @@ async function createUser(userData) {
 }
 
 async function ensureUserStore() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
   try {
-    await fs.access(USERS_FILE);
-  } catch {
-    await fs.writeFile(USERS_FILE, "[]\n");
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    try {
+      await fs.access(USERS_FILE);
+    } catch {
+      await fs.writeFile(USERS_FILE, "[]\n");
+    }
+  } catch (err) {
+    console.error("[ensureUserStore] Failed to initialize user store:", err);
   }
 }
 
 async function readUsers() {
   await ensureUserStore();
-  const raw = await fs.readFile(USERS_FILE, "utf8");
-  return JSON.parse(raw || "[]");
+  try {
+    const raw = await fs.readFile(USERS_FILE, "utf8");
+    const users = JSON.parse(raw || "[]");
+    users.forEach((u) => memoryUserStore.set(u.email, u));
+    return users;
+  } catch (err) {
+    console.error("[readUsers] Failed to read users:", err);
+    return Array.from(memoryUserStore.values());
+  }
 }
 
 async function writeUsers(users) {
   await ensureUserStore();
-  await fs.writeFile(USERS_FILE, `${JSON.stringify(users, null, 2)}\n`);
+  try {
+    await fs.writeFile(USERS_FILE, `${JSON.stringify(users, null, 2)}\n`);
+    users.forEach((u) => memoryUserStore.set(u.email, u));
+  } catch (err) {
+    console.error("[writeUsers] Failed to write users:", err);
+    users.forEach((u) => memoryUserStore.set(u.email, u));
+  }
 }
 
 async function ensureAuditsStore() {
@@ -381,9 +446,50 @@ async function updateTeamProfilesStore(mutator) {
   return task;
 }
 
+// ── Serialized, size-capped JSON array append store ──────────────────────────
+// Append-style endpoints (client error logs, feedback, interview experiences,
+// audit history) previously did an unserialized readFile → parse → push →
+// writeFile. Under concurrency those interleave and silently drop entries
+// (lost writes), and they grow without bound — the anonymous /api/log-error
+// route is a disk-fill DoS. This helper serializes each file's read-modify-write
+// through a per-file promise chain (mirroring updateMemoryStore), writes
+// atomically via a temp file + rename, and caps the array to its most recent
+// `maxEntries` so the file can never grow unbounded.
+const jsonArrayWriteQueues = new Map();
+
+function appendToJsonArrayFile(filePath, entry, maxEntries = 1000) {
+  const previous = jsonArrayWriteQueues.get(filePath) || Promise.resolve();
+  const task = previous.then(async () => {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    let list = [];
+    try {
+      const raw = await fs.readFile(filePath, "utf8");
+      list = JSON.parse(raw || "[]");
+      if (!Array.isArray(list)) list = [];
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
+    }
+    list.push(entry);
+    if (list.length > maxEntries) {
+      list = list.slice(list.length - maxEntries);
+    }
+    const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    await fs.writeFile(tmpPath, `${JSON.stringify(list, null, 2)}\n`);
+    await fs.rename(tmpPath, filePath);
+    return entry;
+  });
+  // Keep the chain alive even if one write rejects, so later writes still run.
+  jsonArrayWriteQueues.set(filePath, task.catch(() => {}));
+  return task;
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 async function readJsonBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (req.body && typeof req.body === "string") {
+    try { return JSON.parse(req.body); } catch { return {}; }
+  }
   let body = "";
   for await (const chunk of req) {
     body += chunk;
@@ -411,6 +517,22 @@ function redirect(res, location, headers = {}) {
 function getSession(req) {
   const cookies = parseCookies(req.headers.cookie || "");
   return verifyAccessToken(cookies[SESSION_COOKIE]);
+}
+
+// A team profile is private to its owner — the authenticated user who first
+// created it — and any explicitly listed members. Profiles with no recorded
+// owner are treated as unclaimed legacy data: still readable, and claimed by
+// the first authenticated user who writes them. This closes the IDOR where any
+// client could read/overwrite any profile just by knowing its id.
+function canAccessTeamProfile(profile, userId) {
+  if (!profile || !profile.ownerId) return true;
+  if (profile.ownerId === userId) return true;
+  const members = Array.isArray(profile.members) ? profile.members : [];
+  return members.some(
+    (m) =>
+      m === userId ||
+      (m && typeof m === "object" && (m.id === userId || m.userId === userId)),
+  );
 }
 
 function normalizePathname(pathname) {
@@ -443,7 +565,7 @@ function authorizeRequest(req, pathname) {
 }
 
 function validateRequest(req) {
-  const allowedMethods = ["GET", "POST"];
+  const allowedMethods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
   if (!allowedMethods.includes(req.method)) {
     return {
       valid: false,
@@ -473,7 +595,9 @@ function isSameOriginRequest(req) {
   for (const header of [req.headers.origin, req.headers.referer]) {
     if (!header) continue;
     try {
-      if (new URL(header).host === host) return true;
+      const requestHost = host.split(":")[0];
+      const urlHost = new URL(header).host.split(":")[0];
+      if (urlHost && requestHost && urlHost === requestHost) return true;
     } catch {
       // Malformed Origin/Referer header — treat as untrusted.
     }
@@ -497,24 +621,19 @@ async function handleApi(req, res, pathname) {
                         .update(secret)
                         .digest("hex");
     const isProd = process.env.NODE_ENV === "production";
-    const cookieString = `csrfSecret=${secret}; HttpOnly; ${isProd ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=3600`;
+    const cookieString = `csrfSecret=${secret}; HttpOnly; ${isProd ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=3600`;
     return sendJson(res, 200, { csrfToken: token }, { "Set-Cookie": cookieString });
   }
 
   if (pathname === "/api/log-error" && req.method === "POST") {
+    // Anonymous + append-only: rate-limit to curb write-flooding abuse. The
+    // capped, serialized write below bounds disk use regardless.
+    if (!applyRateLimit(req, res, logErrorLimiter, "Too many error reports. Please try again later.")) {
+      return;
+    }
     try {
       const payload = await readJsonBody(req);
-      const logFile = path.join(DATA_DIR, "client_errors.json");
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      let currentLogs = [];
-      try {
-        const raw = await fs.readFile(logFile, "utf8");
-        currentLogs = JSON.parse(raw || "[]");
-      } catch (e) {
-        // file might not exist
-      }
-      currentLogs.push(payload);
-      await fs.writeFile(logFile, `${JSON.stringify(currentLogs, null, 2)}\n`);
+      await appendToJsonArrayFile(CLIENT_ERRORS_FILE, payload, MAX_CLIENT_ERROR_ENTRIES);
       return sendJson(res, 200, { success: true });
     } catch (err) {
       console.error("Error logging client error:", err);
@@ -559,13 +678,7 @@ async function handleApi(req, res, pathname) {
         return sendJson(res, 400, { success: false, message: 'Source code and language are required.' });
       }
 
-      const languageMap = {
-        'javascript': { lang: 'nodejs', version: '4' },
-        'python': { lang: 'python3', version: '3' },
-        'cpp': { lang: 'cpp17', version: '0' },
-        'java': { lang: 'java', version: '4' },
-        'perl': { lang: 'perl', version: '0' }
-      };
+
 
       const languageId = JUDGE0_LANGUAGE_IDS[language.toLowerCase()];
 
@@ -590,6 +703,7 @@ async function handleApi(req, res, pathname) {
             source_code: b64(sourceCode),
             language_id: languageId,
             stdin: b64(stdin || ""),
+            compiler_options: languageId === 54 ? '-std=c++17' : undefined,
           })
         });
 
@@ -694,14 +808,23 @@ async function handleApi(req, res, pathname) {
       const tmpFile = path.join(DATA_DIR, `__trace_${crypto.randomUUID()}.mjs`);
       let snapshots = [];
       let userOutput = "";
+      let traceError = null;
 
       try {
         await fs.writeFile(tmpFile, instrumented, "utf8");
         await new Promise((resolve, reject) => {
-          execFile("node", [tmpFile], {
+          // Sandbox the user-submitted code: instrumentJS does NOT isolate it,
+          // so run it under Node's Permission Model (--permission denies fs,
+          // child_process, worker_threads and native addons) with an empty
+          // environment so the child cannot read server secrets (SESSION_SECRET,
+          // Firebase keys, etc.). process.execPath is used directly so the
+          // binary resolves without a PATH in the stripped env. This blocks the
+          // RCE / secret-exfiltration path while still allowing console output
+          // and the snapshot JSON written to stdout.
+          execFile(process.execPath, ["--permission", tmpFile], {
             timeout: 10000,
             maxBuffer: 1024 * 1024,
-            env: { ...process.env, NODE_OPTIONS: "" },
+            env: {},
           }, (err, stdout, stderr) => {
             if (stdout) {
               try {
@@ -728,13 +851,6 @@ async function handleApi(req, res, pathname) {
             }
           });
         });
-      let snapshots = [];
-      let userOutput = "";
-      let traceError = null;
-      try {
-        const result = await runTrace(sourceCode, stdin);
-        snapshots = result.snapshots || [];
-        userOutput = result.output || "";
       } catch (execError) {
         traceError = execError.message;
         userOutput = `Execution error: ${traceError}`;
@@ -778,9 +894,14 @@ async function handleApi(req, res, pathname) {
 
   if (pathname === "/api/team-profile" && req.method === "GET") {
     try {
+      const session = getSession(req);
+      if (!session) {
+        return sendJson(res, 401, { error: "Login required." });
+      }
+
       const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
       const teamId = urlParams.get("id");
-      
+
       if (!teamId) {
         return sendJson(res, 400, { error: "Missing team id." });
       }
@@ -796,6 +917,10 @@ async function handleApi(req, res, pathname) {
         if (snapshot.exists) {
           profileData = snapshot.data();
         }
+      }
+
+      if (profileData && !canAccessTeamProfile(profileData, session.sub)) {
+        return sendJson(res, 403, { error: "You do not have access to this team profile." });
       }
 
       if (!profileData) {
@@ -818,6 +943,11 @@ async function handleApi(req, res, pathname) {
 
   if (pathname === "/api/team-profile" && req.method === "POST") {
     try {
+      const session = getSession(req);
+      if (!session) {
+        return sendJson(res, 401, { error: "Login required." });
+      }
+
       const payload = await readJsonBody(req);
       const { id: teamId, version, name, description, members } = payload;
 
@@ -835,7 +965,14 @@ async function handleApi(req, res, pathname) {
         try {
           updatedProfile = await updateTeamProfilesStore(store => {
             const currentProfile = store[teamId] || { version: 1 };
-            
+
+            // Ownership check: only the owner/members may modify a claimed profile.
+            if (!canAccessTeamProfile(currentProfile, session.sub)) {
+              const forbiddenError = new Error("Forbidden");
+              forbiddenError.status = 403;
+              throw forbiddenError;
+            }
+
             // OCC version check
             if (currentProfile.version !== version) {
               const conflictError = new Error("Conflict");
@@ -847,6 +984,7 @@ async function handleApi(req, res, pathname) {
             // Update data and increment version
             const newProfile = {
               id: teamId,
+              ownerId: currentProfile.ownerId || session.sub,
               name: name || currentProfile.name || "New Team Profile",
               description: description !== undefined ? description : (currentProfile.description || ""),
               members: members || currentProfile.members || [],
@@ -858,8 +996,11 @@ async function handleApi(req, res, pathname) {
             return newProfile;
           });
         } catch (error) {
+          if (error.status === 403) {
+            return sendJson(res, 403, { error: "You do not have access to this team profile." });
+          }
           if (error.status === 409) {
-            return sendJson(res, 409, { 
+            return sendJson(res, 409, {
               error: "Conflict detected: The profile was updated by someone else.",
               currentVersion: error.currentVersion
             });
@@ -871,8 +1012,16 @@ async function handleApi(req, res, pathname) {
         try {
           updatedProfile = await db.runTransaction(async (transaction) => {
             const doc = await transaction.get(docRef);
-            
-            const currentVersion = doc.exists ? doc.data().version : 1;
+            const existing = doc.exists ? doc.data() : null;
+
+            // Ownership check: only the owner/members may modify a claimed profile.
+            if (!canAccessTeamProfile(existing, session.sub)) {
+              const forbiddenError = new Error("Forbidden");
+              forbiddenError.status = 403;
+              throw forbiddenError;
+            }
+
+            const currentVersion = existing ? existing.version : 1;
 
             if (currentVersion !== version) {
               const conflictError = new Error("Conflict");
@@ -883,9 +1032,10 @@ async function handleApi(req, res, pathname) {
 
             const newProfile = {
               id: teamId,
-              name: name || (doc.exists ? doc.data().name : "New Team Profile"),
-              description: description !== undefined ? description : (doc.exists ? doc.data().description : ""),
-              members: members || (doc.exists ? doc.data().members : []),
+              ownerId: (existing && existing.ownerId) || session.sub,
+              name: name || (existing ? existing.name : "New Team Profile"),
+              description: description !== undefined ? description : (existing ? existing.description : ""),
+              members: members || (existing ? existing.members : []),
               version: version + 1,
               updatedAt: new Date().toISOString()
             };
@@ -894,8 +1044,11 @@ async function handleApi(req, res, pathname) {
             return newProfile;
           });
         } catch (error) {
+          if (error.status === 403) {
+            return sendJson(res, 403, { error: "You do not have access to this team profile." });
+          }
           if (error.status === 409) {
-            return sendJson(res, 409, { 
+            return sendJson(res, 409, {
               error: "Conflict detected: The profile was updated by someone else.",
               currentVersion: error.currentVersion
             });
@@ -914,13 +1067,13 @@ async function handleApi(req, res, pathname) {
   if (
     pathname === "/api/debug-env" &&
     req.method === "GET" &&
-    process.env.NODE_ENV !== "production"
+    process.env.ENABLE_DEBUG_ENV === "true"
   ) {
     const keys = ["FIREBASE_API_KEY","FIREBASE_AUTH_DOMAIN","FIREBASE_PROJECT_ID","FIREBASE_STORAGE_BUCKET","FIREBASE_MESSAGING_SENDER_ID","FIREBASE_APP_ID","FIREBASE_CLIENT_EMAIL","FIREBASE_PRIVATE_KEY","SESSION_SECRET"];
     const vars = {};
     keys.forEach(k => {
       const v = process.env[k];
-      vars[k] = v ? v.slice(0, 6) + "..." + v.slice(-4) : "(not set)";
+      vars[k] = Boolean(process.env[k]);
     });
     return sendJson(res, 200, vars);
   }
@@ -948,6 +1101,9 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/analyze-resume" && req.method === "POST") {
+    if (!applyRateLimit(req, res, resumeAnalysisLimiter, "Too many resume analysis requests. Please try again later.")) {
+      return;
+    }
     try {
       await new Promise((resolve, reject) => {
         upload(req, res, (err) => {
@@ -996,6 +1152,9 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/analyze-repository" && req.method === "POST") {
+    if (!applyRateLimit(req, res, repoAnalysisLimiter, "Too many repository analysis requests. Please try again later.")) {
+      return;
+    }
     try {
       const payload = await readJsonBody(req);
       const { repoUrl } = payload;
@@ -1051,6 +1210,9 @@ async function handleApi(req, res, pathname) {
 
   // SDLC Advisor API
   if (pathname === "/api/sdlc-advisor" && req.method === "POST") {
+    if (!applyRateLimit(req, res, sdlcAdvisorLimiter, "Too many SDLC advisor requests. Please try again later.")) {
+      return;
+    }
     try {
       const payload = await readJsonBody(req);
       const { description } = payload;
@@ -1067,18 +1229,31 @@ async function handleApi(req, res, pathname) {
 
   // Bulk Audit APIs
   if (pathname === "/api/audit/bulk" && req.method === "POST") {
+    if (!applyRateLimit(req, res, bulkAuditLimiter, "Too many bulk audit requests. Please try again later.")) {
+      return;
+    }
     try {
       uploadCsv(req, res, async (err) => {
         if (err) return sendJson(res, 500, { error: "Upload error." });
         if (!req.file) return sendJson(res, 400, { error: "No CSV file uploaded." });
-        
+
         try {
           const records = csvParse(req.file.buffer.toString('utf-8'), { columns: false, skip_empty_lines: true });
           // Extract repo URLs from the first column
           const repoUrls = records.map(row => row[0]).filter(url => url && url.includes("github.com"));
-          
+
           if (repoUrls.length === 0) {
             return sendJson(res, 400, { error: "No valid GitHub URLs found in the CSV." });
+          }
+
+          // Cap batch size: each URL fans out to outbound GitHub requests, so an
+          // unbounded CSV is a denial-of-service / cost-amplification vector.
+          if (repoUrls.length > MAX_BULK_AUDIT_URLS) {
+            return sendJson(res, 400, {
+              error: `Too many repositories. A maximum of ${MAX_BULK_AUDIT_URLS} is allowed per bulk audit.`,
+              maxAllowed: MAX_BULK_AUDIT_URLS,
+              received: repoUrls.length,
+            });
           }
 
           const batchId = uuidv4();
@@ -1205,11 +1380,12 @@ if (pathname === "/api/session" && req.method === "GET") {
       await createUser(user);
 
       const token = createAccessToken(user);
+      const refreshToken = createRefreshToken(user);
       loginLimiter.reset(getClientIdentifier(req));
       return sendJson(
         res, 200,
         { user: { id: user.id, name: user.name, email: user.email } },
-        { "Set-Cookie": authCookies(token, req) },
+        { "Set-Cookie": authCookies(token, refreshToken, req) },
       );
     } catch (error) {
       console.error("[signup] Unexpected error:", error);
@@ -1227,7 +1403,8 @@ if (pathname === "/api/session" && req.method === "GET") {
       const password = String(payload.password || "");
       const user = await getUserByEmail(email);
       if (!user || !user.password || !passwordMatches(password, user.password)) {
-        return sendJson(res, 401, { error: "Invalid email or password." });
+       console.warn(`[LOGIN FAILED] ${email}`);
+      return sendJson(res, 401, { error: "Invalid email or password." });
       }
 
       if (!user.emailVerified) {
@@ -1257,11 +1434,12 @@ if (pathname === "/api/session" && req.method === "GET") {
       }
 
       const token = createAccessToken(user);
+      const refreshToken = createRefreshToken(user);
       loginLimiter.reset(getClientIdentifier(req));
       return sendJson(
         res, 200,
         { user: { id: user.id, name: user.name, email: user.email } },
-        { "Set-Cookie": authCookies(token, req) },
+        { "Set-Cookie": authCookies(token, refreshToken, req) },
       );
     } catch (error) {
       console.error("[login] Unexpected error:", error);
@@ -1283,37 +1461,33 @@ if (pathname === "/api/session" && req.method === "GET") {
 
       let decoded;
       try {
-        const apiKey = process.env.FIREBASE_API_KEY;
-        if (!apiKey) throw new Error("FIREBASE_API_KEY not configured");
-
-        const tokenResponse = await fetch(
-          `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          }
-        );
-
-        if (!tokenResponse.ok) {
-          const errText = await tokenResponse.text();
-          throw new Error(`Lookup failed: ${tokenResponse.status} ${errText}`);
-        }
-
-        const tokenData = await tokenResponse.json();
-        if (!tokenData.users || tokenData.users.length === 0) throw new Error("No user found for token");
-
-        const u = tokenData.users[0];
+        // Cryptographically verify the Google ID token with the Firebase Admin
+        // SDK. verifyIdToken checks the RS256 signature against Google's public
+        // keys and validates the aud (project id), iss
+        // (securetoken.google.com/<project>) and exp claims — far stronger than
+        // the previous Identity Toolkit REST lookup with the public API key.
+        const { getAuth } = await import("firebase-admin/auth");
+        const decodedToken = await getAuth().verifyIdToken(idToken);
         decoded = {
-          uid: u.localId,
-          email: u.email,
-          name: u.displayName || u.email,
-          picture: u.photoUrl || null,
-          emailVerified: u.emailVerified === true,
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+          name: decodedToken.name || decodedToken.email,
+          picture: decodedToken.picture || null,
+          emailVerified: decodedToken.email_verified === true,
         };
       } catch (verifyError) {
         console.error("Token verification failed:", verifyError.message);
         return sendJson(res, 401, { error: "Invalid token" });
+      }
+
+      // Enforce a Google-verified email. Only an email Google itself has
+      // verified is trusted, which is what makes the email-based account
+      // matching below safe from takeover.
+      if (!decoded.email) {
+        return sendJson(res, 400, { error: "Google token has no email." });
+      }
+      if (!decoded.emailVerified) {
+        return sendJson(res, 403, { error: "Google account email is not verified." });
       }
 
       const { uid, email, name, picture } = decoded;
@@ -1338,7 +1512,18 @@ if (pathname === "/api/session" && req.method === "GET") {
           .limit(1)
           .get();
         if (!emailSnapshot.empty) {
-          user = { ...emailSnapshot.docs[0].data(), id: emailSnapshot.docs[0].id };
+          const existing = { ...emailSnapshot.docs[0].data(), id: emailSnapshot.docs[0].id };
+          // Only link to an account that is itself Google-provisioned. Silently
+          // merging a Google login into a password account would let anyone with
+          // a matching Google address take it over (local signups are not
+          // email-verified), so require the user to sign in with their password.
+          const isGoogleAccount = existing.authProvider === "google" || !!existing.firebaseUid;
+          if (!isGoogleAccount) {
+            return sendJson(res, 409, {
+              error: "An account with this email already exists. Please sign in with your password.",
+            });
+          }
+          user = existing;
         }
       }
 
@@ -1365,7 +1550,8 @@ if (pathname === "/api/session" && req.method === "GET") {
       }
 
       const token = createAccessToken(user);
-      const cookie = authCookies(token, req);
+      const refreshToken = createRefreshToken(user);
+      const cookie = authCookies(token, refreshToken, req);
 
       return sendJson(res, 200, {
         authenticated: true,
@@ -1616,17 +1802,19 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
       const { initializeApp, getApps } = await import("firebase/app");
       const { getAuth, sendPasswordResetEmail } = await import("firebase/auth");
 
-      const configRes = await fetch(`http://127.0.0.1:${process.env.PORT || 3000}/api/firebase-config`);
-      const firebaseConfig = await configRes.json();
+      const firebaseConfig = {
+        apiKey: process.env.FIREBASE_API_KEY,
+        authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.FIREBASE_APP_ID,
+      };
 
-      if (firebaseConfig.configured) {
+      if (firebaseConfig.projectId) {
         const existingApps = getApps();
         const clientApp = existingApps.find(a => a.name === "reset-client") ||
-          initializeApp({
-            apiKey: firebaseConfig.apiKey,
-            authDomain: firebaseConfig.authDomain,
-            projectId: firebaseConfig.projectId,
-          }, "reset-client");
+          initializeApp(firebaseConfig, "reset-client");
 
         const auth = getAuth(clientApp);
         await sendPasswordResetEmail(auth, email);
@@ -1639,15 +1827,6 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
     // Always return success to prevent email enumeration
     return sendJson(res, 200, { message: "Reset email sent if account exists." });
   }
-  if (pathname === "/api/logout" && req.method === "POST") {
-    return sendJson(
-      res,
-      200,
-      { ok: true },
-      { "Set-Cookie": clearAuthCookies() },
-    );
-  }
-
   if (pathname === "/api/feedback" && req.method === "POST") {
     const session = getSession(req);
     let payload;
@@ -1712,21 +1891,8 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
         const docRef = await db.collection("feedback").add(feedbackData);
         feedbackData.id = docRef.id;
       } else {
-        const feedbackFile = path.join(DATA_DIR, "feedback.json");
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        let feedbackList = [];
-        try {
-          const raw = await fs.readFile(feedbackFile, "utf8");
-          feedbackList = JSON.parse(raw || "[]");
-        } catch (err) {
-          if (err.code !== "ENOENT") throw err;
-        }
         feedbackData.id = crypto.randomUUID();
-        feedbackList.push(feedbackData);
-        await fs.writeFile(
-          feedbackFile,
-          JSON.stringify(feedbackList, null, 2) + "\n",
-        );
+        await appendToJsonArrayFile(FEEDBACK_FILE, feedbackData, MAX_FEEDBACK_ENTRIES);
       }
 
       return sendJson(res, 201, { success: true, feedback: feedbackData });
@@ -1827,17 +1993,11 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
           .add(experienceData);
         experienceData.id = docRef.id;
       } else {
-        const filePath = path.join(DATA_DIR, "interview-experiences.json");
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        let list = [];
-        try {
-          const raw = await fs.readFile(filePath, "utf8");
-          list = JSON.parse(raw || "[]");
-        } catch (err) {
-          if (err.code !== "ENOENT") throw err;
-        }
-        list.push(experienceData);
-        await fs.writeFile(filePath, JSON.stringify(list, null, 2) + "\n");
+        await appendToJsonArrayFile(
+          INTERVIEW_EXPERIENCES_FILE,
+          experienceData,
+          MAX_INTERVIEW_EXPERIENCE_ENTRIES,
+        );
       }
       return sendJson(res, 201, { success: true, experience: experienceData });
     } catch (err) {
@@ -1868,9 +2028,7 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
       if (useFirestore) {
         await db.collection(COLLECTIONS.AUDITS_HISTORY).doc(auditData.auditId).set(auditData);
       } else {
-        const audits = await readAudits();
-        audits.push(auditData);
-        await writeAudits(audits);
+        await appendToJsonArrayFile(AUDITS_FILE, auditData, MAX_AUDIT_HISTORY_ENTRIES);
       }
 
       return sendJson(res, 201, { success: true, auditId: auditData.auditId });
@@ -2255,7 +2413,13 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
     try { payload = await readJsonBody(req); } catch { return sendJson(res, 400, { error: "Invalid JSON." }); }
 
     const existing = payload.existing || { repetitions: 0, easeFactor: 2.5, interval: 0 };
-    const quality = parseInt(payload.quality) !== undefined ? parseInt(payload.quality) : 3;
+    // parseInt() returns NaN (never undefined) for missing/non-numeric input,
+    // so guard with Number.isInteger and fall back to the SM-2 default of 3,
+    // clamped to the valid quality range (0-5) — otherwise applySM2 persists NaN.
+    const parsedQuality = Number.parseInt(payload.quality, 10);
+    const quality = Number.isInteger(parsedQuality)
+      ? Math.max(0, Math.min(5, parsedQuality))
+      : 3;
     const updated = applySM2(existing, quality);
     updated.problemId = parseInt(problemId) || 0;
 
@@ -2515,7 +2679,8 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
     await writeUsers(users);
 
     const sessionToken = createAccessToken(users[idx]);
-    res.setHeader("Set-Cookie", authCookies(sessionToken, req));
+    const refreshToken = createRefreshToken(users[idx]);
+    res.setHeader("Set-Cookie", authCookies(sessionToken, refreshToken, req));
     return sendJson(res, 200, { ok: true });
   }
 
@@ -2540,6 +2705,44 @@ if (pathname === "/api/forgot-password" && req.method === "POST") {
       console.error("[email] Resend failed:", err)
     );
     return sendJson(res, 200, { ok: true });
+  }
+
+  if (pathname === "/api/predict-acceptance" && req.method === "POST") {
+    if (!applyRateLimit(req, res, predictionLimiter, "Too many prediction requests. Please try again later.")) {
+      return;
+    }
+    let payload;
+    try {
+      payload = await readJsonBody(req);
+    } catch (err) {
+      const tooLarge = err?.message === "Request body is too large.";
+      return sendJson(res, tooLarge ? 413 : 400, {
+        success: false,
+        error: tooLarge ? "Request body is too large." : "Invalid JSON body.",
+      });
+    }
+
+    const { code, language, problemId } = payload;
+    if (
+      typeof code !== "string" ||
+      !code.trim() ||
+      typeof language !== "string" ||
+      !language.trim() ||
+      !String(problemId ?? "").trim()
+    ) {
+      return sendJson(res, 400, {
+        success: false,
+        error: "Code, language, and problemId are required",
+      });
+    }
+
+    try {
+      const analysis = analyzeCode(code, language, problemId);
+      return sendJson(res, 200, { success: true, data: analysis });
+    } catch (error) {
+      console.error("Error predicting acceptance:", error);
+      return sendJson(res, 500, { success: false, error: error.message });
+    }
   }
 
   // ── Execution History Endpoints ─────────────────────────────────────────
@@ -2644,9 +2847,12 @@ function resolveStaticPath(pathname) {
 const routes = {
   "/": "index.html",
   "/login": "pages/auth/login.html",
+  "/login.html": "pages/auth/login.html",
   "/profile": "pages/profile/public-profile.html",
   "/signup": "pages/auth/signup.html",
+  "/signup.html": "pages/auth/signup.html",
   "/verify-email": "pages/auth/verify-email.html",
+  "/verify-email.html": "pages/auth/verify-email.html",
     "/community": "community.html",
     "/python-learning": "python-learning.html",
     "/javascript-learning": "javascript-learning.html",
@@ -2741,6 +2947,22 @@ async function serveStatic(req, res, pathname) {
     const fileStat = await fs.stat(target);
     const ext = path.extname(target);
 
+    // ── Server-side auth gate ────────────────────────────────────────────────
+    // A page may declare that it requires authentication with
+    // <meta name="auth-required" content="true">. Enforce it here so access is
+    // controlled by the server regardless of which URL reached the file — the
+    // client-side gate (auth-gate.js) is cosmetic only. Read the HTML once and
+    // reuse it below to avoid a second read.
+    let htmlContent = null;
+    if (ext === ".html") {
+      htmlContent = await fs.readFile(target, "utf-8");
+      const requiresAuth =
+        /<meta\b(?=[^>]*\sname\s*=\s*["']auth-required["'])(?=[^>]*\scontent\s*=\s*["']true["'])[^>]*>/i.test(htmlContent);
+      if (requiresAuth && !getSession(req)) {
+        return redirect(res, `/login?next=${encodeURIComponent(pathname)}`);
+      }
+    }
+
     // ETag generation based on file size and mtime
     const mtimeMs = fileStat.mtime.getTime();
     const size = fileStat.size;
@@ -2765,15 +2987,15 @@ async function serveStatic(req, res, pathname) {
       return res.end();
     }
 
-    let content = await fs.readFile(target);
+    let content;
 
     if (ext === ".html") {
       // Generate a dynamic nonce for CSP script elements
       const nonce = crypto.randomBytes(16).toString("base64");
-      
-      // Inject nonce into script tags in the HTML content
-      let htmlStr = content.toString("utf-8");
-      htmlStr = htmlStr.replace(/<script(\s|>)/gi, `<script nonce="${nonce}"$1`);
+
+      // Inject nonce into script tags in the HTML content (htmlContent was read
+      // by the auth gate above).
+      const htmlStr = htmlContent.replace(/<script(\s|>)/gi, `<script nonce="${nonce}"$1`);
       content = Buffer.from(htmlStr, "utf-8");
 
       headers["Content-Security-Policy"] = 
@@ -2786,6 +3008,8 @@ async function serveStatic(req, res, pathname) {
         `frame-src 'self' https://*.firebaseapp.com; ` +
         `object-src 'none'; ` +
         `base-uri 'self';`;
+    } else {
+      content = await fs.readFile(target);
     }
 
     headers["Content-Type"] = mimeTypes[ext] || "application/octet-stream";
@@ -2797,7 +3021,7 @@ async function serveStatic(req, res, pathname) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+async function requestHandler(req, res) {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     const pathname = normalizePathname(decodeURIComponent(url.pathname));
@@ -2829,7 +3053,9 @@ const server = http.createServer(async (req, res) => {
     console.error(error);
     sendJson(res, 500, { error: "Something went wrong." });
   }
-});
+}
+
+const server = http.createServer(requestHandler);
 
 // ===== CODE ANALYSIS ENGINE =====
 // Used by the POST /api/predict-acceptance route in handleApi().
@@ -3140,17 +3366,21 @@ socket.on('voice-ice', ({ roomId, candidate, to, from }) => {
 
   // ── COLLABORATIVE STUDY ROOM EVENTS ──
   socket.on("join-study-room", async ({ roomId, userId, userName }) => {
+    const session = getSession(socket.request);
+    const authUserId = session ? session.sub : userId;
+    const authUserName = session ? session.name : userName;
+
     socket.join(roomId);
-    socket.userId = userId;
+    socket.userId = authUserId;
     socket.studyRoomId = roomId;
-    socket.userName = userName;
+    socket.userName = authUserName;
 
     let room = studyRooms.get(roomId);
     if (!room) {
       room = {
         id: roomId,
-        hostId: userId,
-        hostName: userName,
+        hostId: authUserId,
+        hostName: authUserName,
         config: { maxParticipants: 4, timerDuration: 600, difficulty: "Medium", topic: "arrays", problems: [] },
         status: "lobby",
         participants: {},
@@ -3161,10 +3391,10 @@ socket.on('voice-ice', ({ roomId, candidate, to, from }) => {
       studyRooms.set(roomId, room);
     }
 
-    if (!room.participants[userId]) {
-      room.participants[userId] = {
-        id: userId,
-        name: userName,
+    if (!room.participants[authUserId]) {
+      room.participants[authUserId] = { 
+        id: authUserId,
+        name: authUserName,
         status: room.status === "playing" ? "solving" : "lobby",
         score: 0,
         timeTaken: null,
@@ -3172,7 +3402,7 @@ socket.on('voice-ice', ({ roomId, candidate, to, from }) => {
       };
     }
 
-    console.log(`👥 Study room: User ${userName} joined room ${roomId}`);
+    console.log(`👥 Study room: User ${authUserName} joined room ${roomId}`);
     io.to(roomId).emit("study-room-updated", serializeRoom(room));
   });
 
@@ -3269,11 +3499,21 @@ socket.on('voice-ice', ({ roomId, candidate, to, from }) => {
 });
 // -----------------------------------------
 
-export { server, hashPassword, passwordMatches, applySM2, validateSignup, updateMemoryStore, readMemoryStore };
+export { server, requestHandler, hashPassword, passwordMatches, applySM2, validateSignup, updateMemoryStore, readMemoryStore, appendToJsonArrayFile };
+
 if (process.env.VERCEL === "1") {
   db = initializeFirebase();
   useFirestore = !!db;
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("FATAL: SESSION_SECRET is required on Vercel. Set it in the Vercel dashboard under Project Settings > Environment Variables.");
+  }
 }
+
+const vercelHandler = process.env.VERCEL === "1"
+  ? async (req, res) => requestHandler(req, res)
+  : undefined;
+
+export default vercelHandler;
 
 
 
@@ -3312,4 +3552,4 @@ if (process.env.VERCEL !== "1" && process.env.NODE_ENV !== "test") {
       console.error("Failed to load environment configuration:", error);
       process.exit(1);
     });
-}
+  }
